@@ -19,22 +19,30 @@ const TIMEOUT = 15000;
 
 // ---------- 주소 ----------
 
-export function apiUrl() {
+// 주소의 ?api= 는 페이지를 열 때 한 번만 읽어 이 기기에 저장한다.
+// (apiUrl → setApiUrl → 상태 알림 → apiUrl … 로 끝없이 도는 일이 없도록 여기서는 알림을 보내지 않음)
+(function saveApiParam() {
   const p = new URLSearchParams(location.search).get('api');
-  if (p) {
-    if (/^https:\/\/script\.google(usercontent)?\.com\//.test(p)) setApiUrl(p);
-    else if (p === 'off') setApiUrl('');
-  }
+  if (!p) return;
+  if (/^https:\/\/script\.google(usercontent)?\.com\//.test(p)) storeApiUrl(p);
+  else if (p === 'off') storeApiUrl('');
+})();
+
+function storeApiUrl(url) {
+  try {
+    if (url) localStorage.setItem(API_KEY, url.trim());
+    else localStorage.removeItem(API_KEY);
+  } catch (_) { /* 무시 */ }
+}
+
+export function apiUrl() {
   let saved = '';
   try { saved = localStorage.getItem(API_KEY) || ''; } catch (_) { /* 무시 */ }
   return saved || GAS_URL || '';
 }
 
 export function setApiUrl(url) {
-  try {
-    if (url) localStorage.setItem(API_KEY, url.trim());
-    else localStorage.removeItem(API_KEY);
-  } catch (_) { /* 무시 */ }
+  storeApiUrl(url);
   emitStatus();
 }
 
