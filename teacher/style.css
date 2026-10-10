@@ -39,3 +39,10 @@ table.hard td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .public .tiles { width: min(60rem, 100%); }
 .public .tile b { font-size: 5rem; }
 .public .tile span { font-size: 1.4rem; }
+
+@media (max-width: 899px) {
+  .lanes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .t-login { width: 100%; }
+  .bank-item { grid-template-columns: minmax(0, 1fr); }
+  .preview { flex-direction: column; align-items: flex-start; }
+}

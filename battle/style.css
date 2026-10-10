@@ -88,3 +88,8 @@ html.battle body { touch-action: none; overflow: hidden; }
 .result-row .pts { font-variant-numeric: tabular-nums; }
 .result-row .btn { min-height: 2rem; font-size: 0.8rem; }
 .b-card .row { justify-content: center; }
+
+/* 칸이 작아져도 분수가 카드 밖으로 나가지 않게: 카드 크기에 맞춰 글씨를 줄인다(분수는 두 줄 ≈ 글씨의 2.3배 높이) */
+.opt, .l-card { container-type: size; }
+.opt .frac { font-size: min(3.2rem, 40cqh, 45cqw); }
+.l-card .frac { font-size: min(2.4rem, 40cqh, 45cqw); }

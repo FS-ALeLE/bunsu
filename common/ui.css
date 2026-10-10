@@ -21,6 +21,10 @@
   font-size: 20px;
 }
 
+/* 좁은 화면(휴대폰·세로 태블릿)과 낮은 화면은 글씨 기준을 줄인다 */
+@media (max-width: 899px), (max-height: 699px) { :root { font-size: 17px; } }
+@media (max-width: 480px) { :root { font-size: 15px; } }
+
 html.board { font-size: max(40px, 2.1vw); }
 
 * { box-sizing: border-box; }
@@ -204,7 +208,12 @@ svg.shape.paintable, .touch-area { touch-action: none; }
 .login-msg { margin: 0; min-height: 1.4em; color: #8a6a00; font-weight: 700; }
 
 /* ---------- 공통 배치 ---------- */
-.app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; }
+/* 화면 고정은 넓고 높은 화면(태블릿 가로·칠판)에서만. 휴대폰·세로 태블릿·낮은 화면에서는 페이지가 스크롤된다. */
+.app { display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; }
+@media (min-width: 900px) and (min-height: 700px) {
+  .app { height: 100vh; height: 100dvh; overflow: hidden; }
+}
+html.board .app, html.battle .app { height: 100vh; height: 100dvh; overflow: hidden; }
 .app-main { flex: 1; min-height: 0; display: flex; overflow: auto; }
 .row { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; }
 .col { display: flex; flex-direction: column; gap: 0.6rem; }
@@ -255,3 +264,20 @@ svg.shape.paintable, .touch-area { touch-action: none; }
 .preview-visual .frac { font-size: 1.1rem; }
 .preview-visual .problem-photo { max-height: 6rem; }
 .preview-text { font-size: 0.9rem; }
+
+/* ---------- 좁은 화면 공통 ---------- */
+@media (max-width: 899px) {
+  .topbar { flex-wrap: wrap; padding: 0.4rem 0.6rem; gap: 0.4rem; }
+  .topbar-title { font-size: 1.05rem; white-space: normal; }
+  .topbar-right { gap: 0.3rem; }
+  .problem-body { grid-template-columns: 1fr; }
+  .pick-row { gap: 0.5rem; }
+  .pick-card { flex: 1 1 0; min-width: 0; }
+  .pick-card .frac { font-size: 2.4rem; }
+  .yn { min-width: 0; flex: 1 1 0; }
+  .feedback { font-size: 1.6rem; padding: 0.6rem 1.2rem; }
+}
+@media (max-width: 480px) {
+  .save-status { display: none; }
+  .topbar-right .badge { font-size: 0.85rem; padding: 0.15rem 0.5rem; }
+}

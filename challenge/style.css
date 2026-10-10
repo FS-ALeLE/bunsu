@@ -20,8 +20,8 @@
   flex: 0 1 18rem; display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
   background: var(--panel); border: 2px solid var(--line); border-radius: 1.2rem; padding: 1rem;
 }
-.side-card .frac { font-size: 4.2rem; }
-.side-card .shape-slot { width: 100%; height: 9rem; }
+.side-card .frac { font-size: clamp(2.6rem, 7vh, 4.2rem); }
+.side-card .shape-slot { width: 100%; height: clamp(5rem, 13vh, 9rem); }
 .side-card .read { color: var(--sub); font-weight: 700; }
 
 .gap { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.8rem; }
@@ -46,3 +46,22 @@
 .bar-row svg { width: 100%; height: 4.4rem; }
 
 .answer-line { text-align: center; margin: 0; min-height: 1.5em; font-weight: 800; color: #1d6b40; font-size: 1.1rem; }
+
+/* ---------- 좁은 화면: [분수] [빈칸] [분수] 한 줄, 기호 버튼은 아래 ---------- */
+@media (max-width: 899px) {
+  .ch { padding: 0.6rem 0.6rem 1rem; gap: 0.6rem; }
+  .path-step { font-size: 0.75rem; padding: 0.2rem 0.5rem; }
+  .ch-title { font-size: 1.05rem; }
+  .versus { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 0.5rem; align-items: center; }
+  .versus .gap { display: contents; }
+  .versus .side-card:first-child { grid-column: 1; grid-row: 1; }
+  .versus .side-card:last-child { grid-column: 3; grid-row: 1; }
+  .gap-box { grid-column: 2; grid-row: 1; width: 3.6rem; height: 3.6rem; font-size: 2.4rem; }
+  .symbols { grid-column: 1 / -1; grid-row: 2; justify-content: center; }
+  .symbols .btn { width: 4rem; height: 3.6rem; font-size: 2.2rem; }
+  .side-card { padding: 0.6rem 0.4rem; min-width: 0; }
+  .side-card .frac { font-size: 2.8rem; }
+  .side-card .shape-slot { height: 5.5rem; }
+  .bar-row { grid-template-columns: 3rem minmax(0, 1fr); }
+  .bar-row svg { height: 3.4rem; }
+}
