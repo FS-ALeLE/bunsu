@@ -31,9 +31,9 @@ const APPS = [
     desc: '채팅 한 번으로 만든 버전 그대로.', links: [['열기', 'follow-along/equal-parts.html', { class: false, api: false }]],
   },
   {
-    num: '②', title: '분수 놀이터', when: '1~2차시 태블릿 · 전자칠판 릴레이 / 5~6차시 출제',
+    num: '②', title: '분수 놀이터', when: '1~2차시 태블릿 · 전자칠판 릴레이',
     desc: '모양을 똑같이 나누고 색칠하며 분수를 읽고 써요. 미션 3단계 → 도전 모드.',
-    links: [['태블릿', 'playground/'], ['칠판 모드', 'playground/', { mode: 'board', api: false }], ['출제 모드', 'playground/', { mode: 'maker' }]],
+    links: [['태블릿', 'playground/'], ['칠판 모드', 'playground/', { mode: 'board', api: false }]],
   },
   {
     num: '③', follow: true, title: '분수 비교 돋보기', when: '3~4차시 · 따라하기 프롬프트 결과물',
@@ -54,9 +54,9 @@ const APPS = [
     links: [['전자칠판', 'battle/', { class: false, api: false }]],
   },
   {
-    num: '★', title: '우리 반 문제은행', when: '5~6차시 공유',
-    desc: '친구가 만든 문제를 풀고 좋아요·댓글. 칠판 모드는 좋아요 TOP3.',
-    links: [['태블릿', 'bank/'], ['칠판 TOP3', 'bank/', { mode: 'board' }]],
+    num: '★', title: '우리 반 문제은행', when: '5~6차시 문제 만들기 · 공유',
+    desc: '문제를 만들어 올리고(출제), 친구가 만든 문제를 풀고 좋아요·댓글. 칠판 모드는 좋아요 TOP3.',
+    links: [['문제 만들기', 'playground/', { mode: 'maker' }], ['문제 풀기', 'bank/'], ['칠판 TOP3', 'bank/', { mode: 'board' }]],
   },
   {
     num: '✎', title: '교사 대시보드', when: '교사 전용 (PIN)',

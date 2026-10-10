@@ -218,6 +218,19 @@ button:focus-visible{outline:4px solid var(--focus);outline-offset:3px}
   function prepareOverlay(prob) {
     const base = prob.pieces[0];
     const baseBox = bbox(base.pts);
+    // 돌리는 방향(시계/반시계)이 틀리면 조각이 엇갈려 겹친다(정삼각형 3등분에서 별 모양이 되던 문제).
+    // 두 방향 중 첫 조각과 꼭짓점이 더 잘 맞는 쪽을 고른다.
+    const mismatch = (pts) => {
+      const c1 = centroid(pts), c0 = centroid(base.pts);
+      return pts.reduce((s, [x, y]) => s + Math.min(...base.pts.map(([bx, by]) => Math.hypot(x - c1[0] - (bx - c0[0]), y - c1[1] - (by - c0[1])))), 0);
+    };
+    prob.pieces.forEach((pc, i) => {
+      if (i > 0 && pc.rot) {
+        const a = mismatch(pc.pts.map(p => rotPt(p, pc.rot, pc.about)));
+        const b = mismatch(pc.pts.map(p => rotPt(p, -pc.rot, pc.about)));
+        if (b < a) pc.rot = -pc.rot;
+      }
+    });
     prob.pieces.forEach((pc, i) => {
       const final = transformPts(pc, 1, [0, 0]);
       const b = bbox(final);

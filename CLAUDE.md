@@ -15,6 +15,7 @@
 | — | 구글 앱스 스크립트 백엔드 | `/gas/` | 기록 저장 |
 
 ①③⑤(똑같이 나누었을까?, 분수 비교 돋보기, 분수 줄 세우기)는 이 프로젝트에서 만들지 않는다. 그 셋은 보고서의 '따라하기 프롬프트' 결과물이라서 채팅 한 번으로 만든 버전을 그대로 쓴다. `/follow-along/` 폴더에 복사해 두고 링크만 모음 페이지에 건다.
+(2026-10-11: 수업 확인 후 교사 요청으로 ① 정삼각형 조각 겹치기 오류, ③ 나란히 비교의 그림 눌러 분자 정하기·단위분수 계단 1~8분의 1만 고쳤다. 고친 내용은 `docs/process.md`에 있다.)
 
 ## 기술 원칙
 
@@ -41,7 +42,7 @@
   ui.css               공통 색·글씨·버튼, 태블릿/칠판 모드
 /playground/  /challenge/  /battle/  /bank/  /teacher/   (각 index.html + app.js + style.css)
 /playground/maker.js   ② 출제 모드
-/follow-along/         ①③⑤ 채팅 제작본(수정하지 않음)
+/follow-along/         ①③⑤ 채팅 제작본(교사 요청이 있을 때만 고친다)
 /gas/Code.gs           앱스 스크립트(수동 복사 또는 clasp)
 /tests/multitouch.html 전자칠판 동시 터치 확인용
 /tests/shapes.html     도형 미리보기(모든 모양 × 분모 2~12, 조각 넓이 자동 확인)

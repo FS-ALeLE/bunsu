@@ -1,14 +1,19 @@
 /* 분수 스피드 배틀 — 전자칠판 전용. 1920px 화면에서 rem = 40px */
-html.battle { font-size: max(20px, 2.1vw); }
+/* 1920×1080에서 40px. 화면이 낮으면(예: 1920×906 브라우저 창) 높이에 맞춰 줄인다 */
+html.battle { font-size: max(16px, min(2.1vw, 3.7vh)); }
 html.battle body { touch-action: none; overflow: hidden; }
 
 /* ---------- 시작 화면 ---------- */
-.b-setup { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.8rem; padding: 1rem; overflow: auto; touch-action: auto; }
-.b-setup h1 { margin: 0; font-size: 1.8rem; }
+.b-setup { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; gap: 0.6rem; padding: 0.8rem 1rem; overflow: auto; touch-action: auto; }
+/* 가운데 정렬하되, 내용이 화면보다 길면 잘리지 않고 스크롤되게 */
+.b-setup::before, .b-setup::after { content: ""; flex: 1 1 0; }
+.b-setup .btn-big { min-height: 2.6rem; font-size: 1.1rem; }
+.b-setup .label { font-size: 0.9rem; }
+.b-setup h1 { margin: 0; font-size: 1.5rem; }
 .b-setup .row { justify-content: center; }
 .b-setup .label { font-weight: 800; color: var(--sub); }
 .team-inputs { display: grid; grid-template-columns: repeat(2, 12rem); gap: 0.5rem; }
-.team-inputs .text-input { min-height: 2.2rem; border-left: 0.5rem solid var(--team); }
+.team-inputs .text-input { min-height: 1.9rem; font-size: 0.9rem; border-left: 0.5rem solid var(--team); }
 .team-inputs .text-input:disabled { opacity: 0.35; }
 .round-pick .btn { font-size: 0.8rem; }
 

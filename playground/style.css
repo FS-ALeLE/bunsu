@@ -126,6 +126,11 @@ html.board .controls .d-row .d-val { font-size: 1rem; }
 .answer-status.again { color: #8a6a00; }
 .preview-box { width: 100%; }
 svg.shape .cut-handle { fill: var(--primary); stroke: #fff; stroke-width: 3; cursor: ew-resize; }
+svg.shape .cut-guide { stroke: #3a7bd5; stroke-width: 1.5; stroke-dasharray: 4 4; opacity: 0.55; }
+svg.shape .cut-guide.snap { stroke: var(--ok); opacity: 0.9; stroke-dasharray: none; stroke-width: 2; }
+svg.shape .cut-tick { fill: #3a7bd5; opacity: 0.6; }
+.cmp-row { display: flex; align-items: stretch; gap: 0.8rem; }
+.cmp-steps { display: flex; flex-direction: column; justify-content: space-between; padding: 0.2rem 0; }
 
 /* ---------- 좁은 화면(휴대폰·세로 태블릿): 위아래로 쌓고 페이지를 스크롤 ---------- */
 @media (max-width: 899px) {

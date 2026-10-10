@@ -65,3 +65,20 @@
   .bar-row { grid-template-columns: 3rem minmax(0, 1fr); }
   .bar-row svg { height: 3.4rem; }
 }
+
+/* ---------- 넓은 화면(PC·가로 태블릿·칠판): 화면 크기에 맞춰 키우고 위아래 가운데로 ---------- */
+.ch::before, .ch::after { content: ""; flex: 1 1 0; }
+@media (min-width: 900px) {
+  .ch-title { font-size: clamp(1.3rem, 3.2vh, 2.4rem); }
+  .versus { gap: clamp(1.2rem, 3vw, 4rem); }
+  .side-card { flex-basis: clamp(18rem, 28vw, 34rem); padding: clamp(1rem, 3vh, 2.4rem); border-radius: 1.6rem; }
+  .side-card .frac { font-size: clamp(4.2rem, 14vh, 10rem); }
+  .side-card .shape-slot { height: clamp(9rem, 22vh, 16rem); }
+  .side-card .read { font-size: clamp(1rem, 2.6vh, 1.8rem); }
+  .gap-box { width: clamp(5.5rem, 13vh, 9rem); height: clamp(5.5rem, 13vh, 9rem); font-size: clamp(3.6rem, 9vh, 6.5rem); }
+  .symbols .btn { width: clamp(4.2rem, 10vh, 7rem); height: clamp(4.2rem, 10vh, 7rem); font-size: clamp(2.4rem, 6vh, 4.4rem); }
+  .reasons { max-width: 50rem; }
+  .reasons .btn { font-size: clamp(1.05rem, 2.4vh, 1.5rem); min-height: clamp(3rem, 6vh, 4.4rem); }
+  .bar-hint { max-width: 56rem; }
+  .bar-row svg { height: clamp(4.4rem, 9vh, 7rem); }
+}

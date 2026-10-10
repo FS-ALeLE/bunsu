@@ -35,7 +35,8 @@ button:focus-visible,input:focus-visible{outline:4px solid var(--focus);outline-
 .row{display:grid;grid-template-columns:auto 1fr;gap:clamp(10px,2vw,28px);align-items:center}
 .row .frac{font-size:clamp(34px,5vw,72px);min-width:1.6em}
 .row.a .frac{color:var(--a)} .row.b .frac{color:var(--b)}
-.row svg{width:100%;height:auto;display:block}
+.row svg{width:100%;height:auto;display:block;touch-action:manipulation}
+.row svg .piece{cursor:pointer}
 .sign{text-align:center;font-size:clamp(48px,7vw,96px);font-weight:900;line-height:1}
 .sign small{display:block;font-size:clamp(16px,2vw,26px);font-weight:700;color:var(--muted);margin-top:6px}
 .controls{display:grid;grid-template-columns:1fr 1fr;gap:clamp(12px,2vw,28px)}
@@ -70,6 +71,7 @@ input[type=range]{width:100%;height:44px;accent-color:var(--ink)}
 
   <!-- mode 1 -->
   <section class="stage" id="m1">
+    <p class="lead">막대의 조각을 누르거나 아래 버튼으로 분자를 정해요</p>
     <div class="row a"><div id="fa"></div><svg id="barA" viewBox="0 0 1000 130"></svg></div>
     <div class="sign" id="sign"></div>
     <div class="row b"><div id="fb"></div><svg id="barB" viewBox="0 0 1000 130"></svg></div>
@@ -89,7 +91,7 @@ input[type=range]{width:100%;height:44px;accent-color:var(--ink)}
   <!-- mode 2 -->
   <section class="stage" id="m2" hidden>
     <p class="lead">전체를 똑같이 나누는 수가 많아지면, 한 조각은 어떻게 될까요?</p>
-    <div class="ladder"><svg id="ladder" viewBox="0 0 1000 760"></svg></div>
+    <div class="ladder"><svg id="ladder" viewBox="0 0 1000 500"></svg></div>
     <div class="actions">
       <button class="btn" id="play">시작</button>
       <button class="btn ghost" id="next">한 줄씩</button>
@@ -126,10 +128,18 @@ input[type=range]{width:100%;height:44px;accent-color:var(--ink)}
 
   // ---------- mode 1: side by side ----------
   const color = { a: getComputedStyle(document.documentElement).getPropertyValue("--a").trim(), b: getComputedStyle(document.documentElement).getPropertyValue("--b").trim() };
-  function bar(svg, n, d, c) {
+  function bar(svg, n, d, c, k) {
     svg.innerHTML = "";
     const x0 = 10, w = 980, y = 15, h = 100, cw = w / d;
-    for (let i = 0; i < d; i++) el("rect", { x: x0 + i * cw, y, width: cw, height: h, fill: i < n ? c : "#FFFFFF", stroke: "#16263B", "stroke-width": 4 }, svg);
+    for (let i = 0; i < d; i++) {
+      const r = el("rect", { x: x0 + i * cw, y, width: cw, height: h, fill: i < n ? c : "#FFFFFF", stroke: "#16263B", "stroke-width": 4, class: "piece" }, svg);
+      // 조각을 누르면 그 조각까지 색칠(분자). 마지막으로 색칠된 조각을 다시 누르면 하나 줄어든다.
+      r.addEventListener("click", () => {
+        const nEl = $("n" + k);
+        nEl.value = (i + 1 === +nEl.value) ? i : i + 1;
+        update1("n" + k);
+      });
+    }
   }
   function update1(changed) {
     const same = $("same").checked;
@@ -141,7 +151,7 @@ input[type=range]{width:100%;height:44px;accent-color:var(--ink)}
       n.max = d; if (+n.value > d) n.value = d;
     });
     const na = +$("na").value, da = +$("da").value, nb = +$("nb").value, db = +$("db").value;
-    bar($("barA"), na, da, color.a); bar($("barB"), nb, db, color.b);
+    bar($("barA"), na, da, color.a, "a"); bar($("barB"), nb, db, color.b, "b");
     $("fa").innerHTML = fracHTML(na, da); $("fb").innerHTML = fracHTML(nb, db);
     const L = na * db, R = nb * da;
     const s = L > R ? ">" : L < R ? "<" : "=";
@@ -161,23 +171,28 @@ input[type=range]{width:100%;height:44px;accent-color:var(--ink)}
   // ---------- mode 2: unit fraction ladder ----------
   const ladder = $("ladder");
   let shown = 0, timer = null;
-  const ROW = 60, LX = 130, LW = 850;
+  // 맨 위 1(전체) → 2분의 1 … 8분의 1
+  const ROW = 60, LX = 130, LW = 850, MAX_D = 8;
   function ladderRow(d) {
-    const y = 10 + (d - 2) * ROW;
+    const y = 10 + (d - 1) * ROW;
     const g = el("g", { class: "lrow" }, ladder);
-    // label 1/d drawn as a vertical fraction
-    el("text", { x: 60, y: y + 20, "text-anchor": "middle", "font-size": 24, "font-weight": 800, fill: "#16263B" }, g).textContent = "1";
-    el("line", { x1: 40, x2: 80, y1: y + 27, y2: y + 27, stroke: "#16263B", "stroke-width": 3 }, g);
-    el("text", { x: 60, y: y + 50, "text-anchor": "middle", "font-size": 24, "font-weight": 800, fill: "#16263B" }, g).textContent = d;
+    if (d === 1) {
+      el("text", { x: 60, y: y + 38, "text-anchor": "middle", "font-size": 30, "font-weight": 800, fill: "#16263B" }, g).textContent = "1";
+    } else {
+      // label 1/d drawn as a vertical fraction
+      el("text", { x: 60, y: y + 20, "text-anchor": "middle", "font-size": 24, "font-weight": 800, fill: "#16263B" }, g).textContent = "1";
+      el("line", { x1: 40, x2: 80, y1: y + 27, y2: y + 27, stroke: "#16263B", "stroke-width": 3 }, g);
+      el("text", { x: 60, y: y + 50, "text-anchor": "middle", "font-size": 24, "font-weight": 800, fill: "#16263B" }, g).textContent = d;
+    }
     const cw = LW / d;
     for (let i = 0; i < d; i++) el("rect", { x: LX + i * cw, y: y + 4, width: cw, height: ROW - 14, fill: i === 0 ? color.a : "#FFFFFF", stroke: "#16263B", "stroke-width": 3 }, g);
     if (!reduce) { g.style.opacity = 0; g.style.transition = "opacity .4s"; requestAnimationFrame(() => requestAnimationFrame(() => g.style.opacity = 1)); }
   }
   function showNext() {
-    if (shown >= 11) return false;
-    shown++; ladderRow(shown + 1);
-    if (shown === 11) {
-      const pts = []; for (let d = 2; d <= 12; d++) { const y = 10 + (d - 2) * ROW; pts.push(`${LX + LW / d},${y + 4}`, `${LX + LW / d},${y + ROW - 10}`); }
+    if (shown >= MAX_D) return false;
+    shown++; ladderRow(shown);
+    if (shown === MAX_D) {
+      const pts = []; for (let d = 1; d <= MAX_D; d++) { const y = 10 + (d - 1) * ROW; pts.push(`${LX + LW / d},${y + 4}`, `${LX + LW / d},${y + ROW - 10}`); }
       el("polyline", { points: pts.join(" "), fill: "none", stroke: "#D9483B", "stroke-width": 4, "stroke-dasharray": "10 8" }, ladder);
       $("note2").textContent = "분모가 커질수록 한 조각(단위분수)은 작아져요.";
     }
@@ -186,7 +201,7 @@ input[type=range]{width:100%;height:44px;accent-color:var(--ink)}
   function reset2() { clearInterval(timer); timer = null; ladder.innerHTML = ""; shown = 0; $("note2").textContent = ""; $("play").textContent = "시작"; }
   $("play").addEventListener("click", () => {
     if (timer) { clearInterval(timer); timer = null; $("play").textContent = "이어서"; return; }
-    if (shown >= 11) reset2();
+    if (shown >= MAX_D) reset2();
     $("play").textContent = "멈춤";
     showNext();
     timer = setInterval(() => { if (!showNext()) { clearInterval(timer); timer = null; $("play").textContent = "다시 보기"; } }, reduce ? 200 : 700);

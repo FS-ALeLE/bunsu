@@ -196,6 +196,44 @@ export function startMaker(app, session) {
       }
       return (p.x - b.x) / b.w;
     };
+    // 똑같이 나눈 자리에 점선 안내(그리드). 손잡이가 가까이 오면 그 자리에 딱 붙는다.
+    const d = s.cuts.length - 1;
+    const SNAP = 0.025;
+    const guides = document.createElementNS(NS, 'g');
+    guides.setAttribute('class', 'cut-guides');
+    const guideLines = [];
+    for (let k = 1; k < d; k++) {
+      const e = k / d;
+      const line = document.createElementNS(NS, 'line');
+      let x1; let y1; let x2; let y2;
+      if (s.shape === 'circle') {
+        const r = b.w / 2;
+        x1 = b.x + r; y1 = b.y + r;
+        [x2, y2] = pos(e);
+      } else if (s.shape === 'triangle') {
+        x1 = b.x + b.w / 2; y1 = b.y;
+        x2 = b.x + b.w * e; y2 = b.y + b.h;
+      } else {
+        x1 = x2 = b.x + b.w * e; y1 = b.y; y2 = b.y + b.h;
+      }
+      line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+      line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+      line.setAttribute('class', 'cut-guide');
+      line.setAttribute('pointer-events', 'none');
+      const [tx, ty] = pos(e);
+      const tick = document.createElementNS(NS, 'circle');
+      tick.setAttribute('cx', tx); tick.setAttribute('cy', ty); tick.setAttribute('r', 3.5);
+      tick.setAttribute('class', 'cut-tick');
+      tick.setAttribute('pointer-events', 'none');
+      guides.append(line, tick);
+      guideLines.push({ e, line });
+    }
+    const markSnaps = () => guideLines.forEach(({ e, line }) => {
+      line.classList.toggle('snap', s.cuts.some((c) => Math.abs(c - e) < 1e-6));
+    });
+    markSnaps();
+    svg.appendChild(guides);
+
     for (let i = 1; i < s.cuts.length - 1; i++) {
       const [x, y] = pos(s.cuts[i]);
       const c = document.createElementNS(NS, 'circle');
@@ -208,7 +246,10 @@ export function startMaker(app, session) {
         const move = (ev) => {
           let v = toCut(ev);
           v = Math.max(s.cuts[i - 1] + MIN, Math.min(s.cuts[i + 1] - MIN, v));
+          const near = Math.round(v * d) / d;
+          if (Math.abs(v - near) < SNAP && near > s.cuts[i - 1] && near < s.cuts[i + 1]) v = near;
           s.cuts[i] = v;
+          markSnaps();
           const [nx, ny] = pos(v);
           c.setAttribute('cx', nx); c.setAttribute('cy', ny);
         };
@@ -289,17 +330,18 @@ export function startMaker(app, session) {
     const allowed = F.range(F.MIN_D, MAXD).filter((d) => shapeAllows(s.shape, d));
     if (!allowed.includes(s.b.d)) s.b.d = allowed[0];
     if (s.b.n > s.b.d) s.b.n = s.b.d;
-    const view = h('div', { class: 'row' });
+    // 분자 조절은 분수의 분자 옆(위), 분모 조절은 분모 옆(아래)
+    const view = h('div', { class: 'cmp-row' });
     const draw = () => {
       clear(view, F.fractionEl(s.b, 'big'),
-        h('div', { class: 'col' },
+        h('div', { class: 'cmp-steps' },
+          stepper('분자', () => s.b.n, (v) => { s.b.n = Math.max(1, Math.min(s.b.d, s.b.n + v)); s.answerOk = false; draw(); }),
           stepper('분모', () => s.b.d, (v) => {
             const i = allowed.indexOf(s.b.d) + v;
             if (allowed[i]) s.b.d = allowed[i];
             s.b.n = Math.min(s.b.n, s.b.d);
             s.answerOk = false; draw();
-          }),
-          stepper('분자', () => s.b.n, (v) => { s.b.n = Math.max(1, Math.min(s.b.d, s.b.n + v)); s.answerOk = false; draw(); })));
+          })));
     };
     draw();
     return h('div', { class: 'card col' },
