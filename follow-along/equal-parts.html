@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<title>똑같이 나누었을까?</title>
+<style>
+/* Layout: one-screen classroom tool — title bar, big shape stage, two answer buttons, feedback line. Bright single look for 전자칠판. */
+:root{
+  --bg:#EAF3FB; --panel:#FFFFFF; --ink:#16263B; --muted:#5B6B80;
+  --piece:#FF9F1C; --line:#16263B; --yes:#14996A; --no:#D9483B; --soft:#FFF3D6;
+  --focus:#2F6FE0;
+  --font:"Pretendard","Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",system-ui,sans-serif;
+  color-scheme:light;
+}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);margin:0}
+.app{box-sizing:border-box;height:100%;display:flex;flex-direction:column;gap:clamp(8px,1.6vh,18px);padding-inline:clamp(16px,3vw,40px);padding-block:clamp(10px,2vh,24px);max-width:1400px;margin:0 auto}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+h1{margin:0;font-size:clamp(24px,3.6vw,48px);font-weight:800;letter-spacing:-0.02em}
+.score{display:flex;gap:10px;font-size:clamp(16px,2vw,28px);font-weight:700;font-variant-numeric:tabular-nums}
+.chip{background:var(--panel);border-radius:999px;padding:6px 16px;border:2px solid #D3E0EE}
+.chip b{color:var(--yes)}
+.stage{flex:1;min-height:0;background:var(--panel);border-radius:24px;border:2px solid #D3E0EE;display:flex;flex-direction:column;align-items:stretch;overflow:hidden}
+.stage svg{flex:1;min-height:0;width:100%;display:block}
+.q{padding:14px 12px 0;text-align:center;font-size:clamp(18px,2.4vw,32px);font-weight:700;color:var(--muted);pointer-events:none}
+.feedback{min-height:1.4em;text-align:center;font-size:clamp(20px,2.8vw,38px);font-weight:800}
+.feedback.good{color:var(--yes)} .feedback.bad{color:var(--no)}
+.feedback small{display:block;font-size:.6em;font-weight:600;color:var(--muted)}
+.buttons{display:grid;grid-template-columns:1fr 1fr;gap:clamp(10px,2vw,24px)}
+.ans{border:0;border-radius:20px;color:#fff;font-family:inherit;font-weight:800;font-size:clamp(20px,3vw,40px);padding:clamp(14px,2.4vh,28px) 12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.4em;box-shadow:0 6px 0 rgba(0,0,0,.18);transition:transform .08s}
+.ans:active{transform:translateY(4px);box-shadow:0 2px 0 rgba(0,0,0,.18)}
+.ans .mark{font-size:1.5em;line-height:1}
+.ans.o{background:var(--yes)} .ans.x{background:var(--no)}
+.ans:disabled{opacity:.45;cursor:default}
+.tools{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.tool{font-family:inherit;font-size:clamp(16px,2vw,26px);font-weight:700;padding:10px 22px;border-radius:14px;border:2px solid var(--ink);background:var(--panel);color:var(--ink);cursor:pointer}
+.tool.primary{background:var(--ink);color:#fff}
+button:focus-visible{outline:4px solid var(--focus);outline-offset:3px}
+@media (max-width:520px){.ans{flex-direction:column;gap:2px}}
+@media (prefers-reduced-motion:reduce){.ans{transition:none}}
+</style>
+
+<div class="app">
+  <header>
+    <h1>똑같이 나누었을까?</h1>
+    <div class="score" aria-live="polite">
+      <span class="chip">맞힌 개수 <b id="right">0</b></span>
+      <span class="chip">푼 문제 <span id="total">0</span></span>
+    </div>
+  </header>
+  <div class="stage" id="stage">
+    <div class="q" id="q">이 도형은 똑같이 나누었을까요?</div>
+    <svg id="svg" viewBox="0 20 400 380" role="img" aria-label="나누어진 도형"></svg>
+  </div>
+  <div class="feedback" id="fb" aria-live="polite"></div>
+  <div class="buttons">
+    <button class="ans o" id="btnO"><span class="mark">O</span> 똑같이 나누었어요</button>
+    <button class="ans x" id="btnX"><span class="mark">X</span> 똑같이 나누지 않았어요</button>
+  </div>
+  <div class="tools">
+    <button class="tool" id="btnOverlay">조각 겹쳐 보기</button>
+    <button class="tool primary" id="btnNew">새 문제</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = document.getElementById("svg");
+  const COLORS = ["#FF9F1C","#2EC4B6","#9B5DE5","#F15BB5","#3A86FF","#FFD23F","#06D6A0","#EF476F"];
+  const rand = (a, b) => a + Math.random() * (b - a);
+  const randInt = (a, b) => Math.floor(rand(a, b + 1));
+  const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+
+  // ---------- geometry helpers ----------
+  const rotPt = ([x, y], deg, [cx, cy]) => {
+    const r = deg * Math.PI / 180, c = Math.cos(r), s = Math.sin(r);
+    return [cx + (x - cx) * c - (y - cy) * s, cy + (x - cx) * s + (y - cy) * c];
+  };
+  const bbox = pts => {
+    const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+    return { x: Math.min(...xs), y: Math.min(...ys), X: Math.max(...xs), Y: Math.max(...ys) };
+  };
+  const centroid = pts => [pts.reduce((s, p) => s + p[0], 0) / pts.length, pts.reduce((s, p) => s + p[1], 0) / pts.length];
+  const area = pts => Math.abs(pts.reduce((s, p, i) => { const q = pts[(i + 1) % pts.length]; return s + p[0] * q[1] - q[0] * p[1]; }, 0)) / 2;
+  const sectorPts = (cx, cy, r, a1, a2) => {
+    const pts = [[cx, cy]], steps = Math.max(8, Math.ceil((a2 - a1) / 4));
+    for (let i = 0; i <= steps; i++) {
+      const a = (a1 + (a2 - a1) * i / steps - 90) * Math.PI / 180;
+      pts.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]);
+    }
+    return pts;
+  };
+  // weights that are clearly unequal (largest at least 1.5x smallest)
+  const unequalWeights = n => {
+    let w;
+    do { w = Array.from({ length: n }, () => rand(0.5, 1.6)); }
+    while (Math.max(...w) / Math.min(...w) < 1.6);
+    const sum = w.reduce((a, b) => a + b, 0);
+    return w.map(v => v / sum);
+  };
+
+  // ---------- shape generators ----------
+  // each piece: { pts, rot (deg), about, flip }  — rot/flip line it up with piece 0 for the overlay
+  function circle(n, equal) {
+    const cx = 200, cy = 210, r = 150, off = randInt(0, 3) * 15;
+    const w = equal ? Array(n).fill(1 / n) : unequalWeights(n);
+    let a = off; const pieces = [];
+    w.forEach(f => { const a2 = a + f * 360; pieces.push({ pts: sectorPts(cx, cy, r, a, a2), start: a }); a = a2; });
+    pieces.forEach(p => { p.rot = -(p.start - pieces[0].start); p.about = [cx, cy]; });
+    return { pieces, name: "원" };
+  }
+  function rectLike(n, equal, w, h, name) {
+    const x0 = 200 - w / 2, y0 = 210 - h / 2, pieces = [];
+    const strips = (ws, vertical) => {
+      let t = 0;
+      ws.forEach(f => {
+        if (vertical) pieces.push({ pts: [[x0 + t * w, y0], [x0 + (t + f) * w, y0], [x0 + (t + f) * w, y0 + h], [x0 + t * w, y0 + h]] });
+        else pieces.push({ pts: [[x0, y0 + t * h], [x0 + w, y0 + t * h], [x0 + w, y0 + (t + f) * h], [x0, y0 + (t + f) * h]] });
+        t += f;
+      });
+    };
+    const grid = (cols, rows, cw, rh) => {
+      let ty = 0;
+      rh.forEach(fy => {
+        let tx = 0;
+        cw.forEach(fx => {
+          pieces.push({ pts: [[x0 + tx * w, y0 + ty * h], [x0 + (tx + fx) * w, y0 + ty * h], [x0 + (tx + fx) * w, y0 + (ty + fy) * h], [x0 + tx * w, y0 + (ty + fy) * h]] });
+          tx += fx;
+        });
+        ty += fy;
+      });
+    };
+    const factors = [[2, 2], [2, 3], [3, 2], [2, 4], [4, 2]].filter(([c, r]) => c * r === n);
+    const square = w === h;
+    const center = [200, 210];
+    let note = null;
+    if (equal) {
+      const options = ["v", "h"];
+      if (factors.length) options.push("grid");
+      if (square && (n === 2 || n === 4)) options.push("diag");
+      if (square && n === 4) options.push("mixed");
+      const kind = pick(options);
+      if (kind === "v") strips(Array(n).fill(1 / n), true);
+      else if (kind === "h") strips(Array(n).fill(1 / n), false);
+      else if (kind === "grid") { const [c, r] = pick(factors); grid(c, r, Array(c).fill(1 / c), Array(r).fill(1 / r)); }
+      else if (kind === "diag") {
+        const A = [x0, y0], B = [x0 + w, y0], C = [x0 + w, y0 + h], D = [x0, y0 + h];
+        if (n === 2) { pieces.push({ pts: [A, B, D] }, { pts: [B, C, D], rot: 180, about: center }); }
+        else [[A, B], [B, C], [C, D], [D, A]].forEach(([p, q], k) => pieces.push({ pts: [center, p, q], rot: -90 * k, about: center }));
+      } else { // mixed: two small squares on the left, two triangles on the right — same size, different shape
+        const mx = x0 + w / 2, my = y0 + h / 2;
+        pieces.push({ pts: [[x0, y0], [mx, y0], [mx, my], [x0, my]] }, { pts: [[x0, my], [mx, my], [mx, y0 + h], [x0, y0 + h]] });
+        pieces.push({ pts: [[mx, y0], [x0 + w, y0], [mx, y0 + h]] }, { pts: [[x0 + w, y0], [x0 + w, y0 + h], [mx, y0 + h]] });
+        note = "diffShape";
+      }
+    } else {
+      const options = ["v", "h"];
+      if (factors.length) options.push("grid");
+      const kind = pick(options);
+      if (kind === "grid") { const [c, r] = pick(factors); grid(c, r, unequalWeights(c), unequalWeights(r)); }
+      else strips(unequalWeights(n), kind === "v");
+    }
+    return { pieces, name, note };
+  }
+  function triangle(n, equal) {
+    const s = 320, h = s * Math.sqrt(3) / 2, top = 210 - h * 2 / 3 + 10;
+    const A = [200, top], B = [200 - s / 2, top + h], C = [200 + s / 2, top + h];
+    const G = centroid([A, B, C]);
+    const mid = (p, q) => [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
+    const pieces = []; let note = null;
+    if (equal) {
+      if (n === 2) { const M = mid(B, C); pieces.push({ pts: [A, B, M] }, { pts: [A, M, C], flip: true }); }
+      else if (n === 3) { [[A, B], [B, C], [C, A]].forEach(([p, q], k) => pieces.push({ pts: [G, p, q], rot: -120 * k, about: G })); }
+      else { // n = 4, midpoints
+        const ab = mid(A, B), bc = mid(B, C), ca = mid(C, A);
+        pieces.push({ pts: [A, ab, ca] }, { pts: [ab, B, bc] }, { pts: [ca, bc, C] });
+        const inner = [ab, bc, ca]; pieces.push({ pts: inner, rot: 180, about: centroid(inner) });
+      }
+    } else {
+      if (Math.random() < 0.5) { // bands of equal height — look tidy but are not equal
+        const ys = Array.from({ length: n + 1 }, (_, i) => top + h * i / n);
+        const xl = y => 200 - (y - top) / h * s / 2, xr = y => 200 + (y - top) / h * s / 2;
+        for (let i = 0; i < n; i++) {
+          const y1 = ys[i], y2 = ys[i + 1];
+          pieces.push({ pts: i === 0 ? [A, [xr(y2), y2], [xl(y2), y2]] : [[xl(y1), y1], [xr(y1), y1], [xr(y2), y2], [xl(y2), y2]] });
+        }
+      } else { // fan from the apex with uneven base parts
+        const w = unequalWeights(n); let t = 0;
+        w.forEach(f => { pieces.push({ pts: [A, [B[0] + t * s, B[1]], [B[0] + (t + f) * s, B[1]]] }); t += f; });
+      }
+    }
+    return { pieces, name: "정삼각형", note };
+  }
+
+  function makeProblem() {
+    const equal = Math.random() < 0.5;
+    const shape = pick(["circle", "square", "rect", "triangle"]);
+    let n, p;
+    if (shape === "circle") { n = randInt(2, 8); p = circle(n, equal); }
+    else if (shape === "square") { n = randInt(2, 8); p = rectLike(n, equal, 290, 290, "정사각형"); }
+    else if (shape === "rect") { n = randInt(2, 8); p = rectLike(n, equal, 340, 200, "직사각형"); }
+    else { n = equal ? randInt(2, 4) : randInt(2, 4); p = triangle(n, equal); }
+    // safety: an "unequal" problem must really be unequal
+    if (!equal) {
+      const areas = p.pieces.map(q => area(q.pts));
+      if (Math.max(...areas) / Math.min(...areas) < 1.3) return makeProblem();
+    }
+    p.equal = equal; p.n = n;
+    return p;
+  }
+
+  // ---------- overlay targets ----------
+  function prepareOverlay(prob) {
+    const base = prob.pieces[0];
+    const baseBox = bbox(base.pts);
+    prob.pieces.forEach((pc, i) => {
+      const final = transformPts(pc, 1, [0, 0]);
+      const b = bbox(final);
+      pc.d = i === 0 ? [0, 0] : [baseBox.x - b.x + (baseBox.X - baseBox.x - (b.X - b.x)) / 2, baseBox.y - b.y + (baseBox.Y - baseBox.y - (b.Y - b.y)) / 2];
+    });
+  }
+  function transformPts(pc, t, d) {
+    let pts = pc.pts;
+    if (pc.rot) pts = pts.map(p => rotPt(p, pc.rot * t, pc.about));
+    if (pc.flip) { const c = centroid(pts); const k = 1 - 2 * t; pts = pts.map(([x, y]) => [c[0] + (x - c[0]) * k, y]); }
+    return pts.map(([x, y]) => [x + d[0] * t, y + d[1] * t]);
+  }
+  const toPath = pts => "M" + pts.map(p => p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" L") + " Z";
+
+  // ---------- rendering ----------
+  let prob, answered = false, right = 0, total = 0, anim = null, els = [];
+  function draw() {
+    svg.innerHTML = "";
+    const ghost = document.createElementNS(NS, "g");
+    ghost.setAttribute("id", "ghost");
+    svg.appendChild(ghost);
+    els = prob.pieces.map(pc => {
+      const path = document.createElementNS(NS, "path");
+      path.setAttribute("d", toPath(pc.pts));
+      path.setAttribute("fill", "var(--piece)");
+      path.setAttribute("fill-opacity", "0.9");
+      path.setAttribute("stroke", "var(--line)");
+      path.setAttribute("stroke-width", "4");
+      path.setAttribute("stroke-linejoin", "round");
+      svg.appendChild(path);
+      return path;
+    });
+  }
+  function newProblem() {
+    cancelAnimationFrame(anim);
+    prob = makeProblem(); prepareOverlay(prob);
+    answered = false;
+    document.getElementById("fb").textContent = "";
+    document.getElementById("fb").className = "feedback";
+    document.getElementById("q").textContent = `이 ${prob.name}은 똑같이 나누었을까요?`;
+    btnO.disabled = btnX.disabled = false;
+    draw();
+  }
+
+  function overlay() {
+    cancelAnimationFrame(anim);
+    draw();
+    const ghost = document.getElementById("ghost");
+    prob.pieces.forEach(pc => { // faint outline of where the pieces came from
+      const g = document.createElementNS(NS, "path");
+      g.setAttribute("d", toPath(pc.pts));
+      g.setAttribute("fill", "none"); g.setAttribute("stroke", "#9FB3C8");
+      g.setAttribute("stroke-width", "2"); g.setAttribute("stroke-dasharray", "6 6");
+      ghost.appendChild(g);
+    });
+    els.forEach((el, i) => { el.setAttribute("fill", COLORS[i % COLORS.length]); el.setAttribute("fill-opacity", "0.45"); });
+    const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const per = reduce ? 0 : 450, dur = reduce ? 1 : 700, start = performance.now();
+    const step = now => {
+      let done = true;
+      prob.pieces.forEach((pc, i) => {
+        if (i === 0) return;
+        let t = (now - start - (i - 1) * per) / dur;
+        if (t < 1) done = false;
+        t = Math.max(0, Math.min(1, t));
+        const e = t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+        els[i].setAttribute("d", toPath(transformPts(pc, e, pc.d)));
+      });
+      if (!done) anim = requestAnimationFrame(step);
+      else overlayMessage();
+    };
+    anim = requestAnimationFrame(step);
+  }
+  function overlayMessage() {
+    if (!answered) return;
+    const fb = document.getElementById("fb");
+    const extra = prob.equal
+      ? (prob.note === "diffShape" ? "모양은 달라도 크기는 같아요. 삼각형 2개를 붙이면 작은 네모 1개와 같아요." : "조각이 모두 딱 맞게 겹쳐요.")
+      : "겹쳐 보니 조각마다 크기가 달라요.";
+    const small = fb.querySelector("small");
+    if (small) small.textContent = extra; else { const s = document.createElement("small"); s.textContent = extra; fb.appendChild(s); }
+  }
+
+  // ---------- sound ----------
+  let ctx;
+  function beep(freqs, type = "sine", len = 0.12) {
+    try {
+      ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
+      freqs.forEach((f, i) => {
+        const o = ctx.createOscillator(), g = ctx.createGain(), t = ctx.currentTime + i * len;
+        o.type = type; o.frequency.value = f;
+        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.25, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+        o.connect(g).connect(ctx.destination); o.start(t); o.stop(t + len + 0.02);
+      });
+    } catch (e) {}
+  }
+
+  const PRAISE = ["정답이에요! 눈이 정확해요.", "맞았어요! 조각을 꼼꼼히 봤네요.", "훌륭해요! 조각 크기를 잘 봤어요.", "정답! 다음 문제도 도전!"];
+  function answer(saysEqual) {
+    if (answered) return;
+    answered = true; total++;
+    btnO.disabled = btnX.disabled = true;
+    const ok = saysEqual === prob.equal;
+    const fb = document.getElementById("fb");
+    if (ok) {
+      right++;
+      fb.className = "feedback good"; fb.textContent = pick(PRAISE);
+      beep([660, 880, 1320]);
+    } else {
+      fb.className = "feedback bad";
+      fb.textContent = prob.equal ? "아쉬워요. 이건 똑같이 나눈 거예요." : "아쉬워요. 이건 똑같이 나누지 않았어요.";
+      beep([220, 180], "triangle", 0.18);
+      setTimeout(overlay, 500);
+    }
+    document.getElementById("right").textContent = right;
+    document.getElementById("total").textContent = total;
+  }
+
+  const btnO = document.getElementById("btnO"), btnX = document.getElementById("btnX");
+  btnO.addEventListener("click", () => answer(true));
+  btnX.addEventListener("click", () => answer(false));
+  document.getElementById("btnNew").addEventListener("click", newProblem);
+  document.getElementById("btnOverlay").addEventListener("click", overlay);
+  document.addEventListener("keydown", e => {
+    if (e.key === "o" || e.key === "O") answer(true);
+    if (e.key === "x" || e.key === "X") answer(false);
+    if (e.key === "Enter" && answered) newProblem();
+  });
+
+  newProblem();
+})();
+</script>
+
+</body>
+</html>

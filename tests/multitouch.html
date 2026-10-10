@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>동시 터치 확인</title>
+<!--
+  전자칠판 동시 터치 확인 페이지 (개발 순서 0번)
+  - 손가락·펜·마우스를 모두 포인터 이벤트로 받는다(배틀 앱과 같은 방식).
+  - '지금' = 화면에 닿아 있는 점 수, '최대' = 이 페이지를 연 뒤 가장 많이 닿았던 수.
+  - 칸 나누기(2·3·4칸)는 배틀 앱처럼 처음 닿은 위치로 칸을 정한다. 칸끼리 간섭하는지 본다.
+  - 확인 결과는 이 파일 맨 아래 '현장 확인 기록'에 적는다.
+-->
+<style>
+  :root {
+    --bg: #fffaf3;
+    --ink: #2b2b2b;
+    --sub: #6b6b6b;
+    --line: #e4dccf;
+    --accent: #f08a24;
+    --ok: #2e9d57;
+    --warn: #f2c230;
+    --panel: #ffffff;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    height: 100%;
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    touch-action: none;
+    overscroll-behavior: none;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+  body {
+    display: flex;
+    flex-direction: column;
+    /* 칠판(1920~3840px)에서도 읽히도록 화면 폭에 맞춰 글씨를 키운다 */
+    font-size: clamp(16px, 1.4vw, 48px);
+  }
+
+  header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6em 1.2em;
+    padding: 0.5em 0.8em;
+    background: var(--panel);
+    border-bottom: 2px solid var(--line);
+  }
+  h1 { margin: 0; font-size: 1.2em; }
+  .stat { display: flex; align-items: baseline; gap: 0.3em; }
+  .stat b { font-size: 2.4em; line-height: 1; font-variant-numeric: tabular-nums; }
+  .stat.now b { color: var(--accent); }
+  .stat.max b { color: var(--ok); }
+  .verdict {
+    padding: 0.3em 0.7em;
+    border-radius: 0.6em;
+    background: #f3efe8;
+    font-weight: 700;
+  }
+  .verdict.good { background: #dff3e6; color: #1f6e3c; }
+  .verdict.mid { background: #fdf3cf; color: #7a5c00; }
+  .spacer { flex: 1; }
+  .group { display: flex; gap: 0.3em; align-items: center; }
+  button {
+    font: inherit;
+    font-weight: 700;
+    min-height: 2.4em;
+    min-width: 2.4em;
+    padding: 0 0.8em;
+    border: 2px solid var(--line);
+    border-radius: 0.6em;
+    background: #fff;
+    color: var(--ink);
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  #area {
+    position: relative;
+    flex: 1;
+    display: grid;
+    overflow: hidden;
+    touch-action: none;
+  }
+  .zone {
+    position: relative;
+    border: 3px dashed var(--line);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 0.2em;
+    padding: 0.6em 0.8em;
+    color: var(--sub);
+    transition: background-color 0.1s;
+  }
+  .zone.active { background: #fdebd6; }
+  .zone .zname { font-size: 1.6em; font-weight: 700; }
+  .zone .zcount { font-size: 1em; }
+  .zone .zcount b { font-size: 1.6em; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .hint {
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 1.6em;
+    color: var(--sub);
+    pointer-events: none;
+    text-align: center;
+  }
+  .single .zone { border: none; }
+  .single .zone .zname, .single .zone .zcount { display: none; }
+
+  .dot {
+    position: absolute;
+    left: 0; top: 0;
+    width: 0; height: 0;
+    pointer-events: none;
+    z-index: 5;
+  }
+  .dot .ring {
+    position: absolute;
+    width: 5em; height: 5em;
+    margin: -2.5em 0 0 -2.5em;
+    border-radius: 50%;
+    border: 0.35em solid currentColor;
+    background: color-mix(in srgb, currentColor 22%, transparent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1em;
+    font-weight: 800;
+  }
+  .dot .ring span { font-size: 2em; color: var(--ink); }
+  .dot .label {
+    position: absolute;
+    left: 3em; top: -1.4em;
+    white-space: nowrap;
+    padding: 0.15em 0.5em;
+    border-radius: 0.4em;
+    background: rgba(255, 255, 255, 0.9);
+    color: var(--ink);
+    font-size: 0.8em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  footer {
+    display: none;
+    padding: 0.5em 0.8em;
+    background: var(--panel);
+    border-top: 2px solid var(--line);
+    font-size: 0.8em;
+    line-height: 1.5;
+  }
+  footer.open { display: block; }
+  footer code { font-size: 0.95em; word-break: break-all; }
+  footer .copied { color: var(--ok); font-weight: 700; margin-left: 0.6em; }
+</style>
+</head>
+<body>
+<header>
+  <h1>동시 터치 확인</h1>
+  <div class="stat now">지금 <b id="now">0</b>점</div>
+  <div class="stat max">최대 <b id="max">0</b>점</div>
+  <div class="verdict" id="verdict">여러 손가락으로 동시에 눌러 보세요</div>
+  <div class="spacer"></div>
+  <div class="group" role="group" aria-label="칸 나누기">
+    <span>칸</span>
+    <button type="button" data-split="1" aria-pressed="true">1</button>
+    <button type="button" data-split="2" aria-pressed="false">2</button>
+    <button type="button" data-split="3" aria-pressed="false">3</button>
+    <button type="button" data-split="4" aria-pressed="false">4</button>
+  </div>
+  <button type="button" id="reset">다시 재기</button>
+  <button type="button" id="infoBtn" aria-pressed="false">기기 정보</button>
+</header>
+
+<main id="area" class="single"></main>
+
+<footer id="info">
+  <div id="infoText"></div>
+  <button type="button" id="copy">기록용 글 복사</button><span class="copied" id="copied" hidden>복사했어요</span>
+</footer>
+
+<script type="module">
+  const COLORS = ['#f08a24', '#2e86de', '#2e9d57', '#c0392b', '#8e44ad', '#16a085', '#d35400', '#2c3e50', '#e84393', '#7f8c8d'];
+
+  const area = document.getElementById('area');
+  const nowEl = document.getElementById('now');
+  const maxEl = document.getElementById('max');
+  const verdictEl = document.getElementById('verdict');
+  const infoEl = document.getElementById('info');
+  const infoText = document.getElementById('infoText');
+
+  // pointerId → { el, zone, color, order }
+  const active = new Map();
+  let maxCount = 0;
+  let maxAt = null;
+  let split = 1;
+  let zones = [];
+  let order = 0;
+  const typesSeen = new Set();
+
+  function buildZones() {
+    area.innerHTML = '';
+    area.classList.toggle('single', split === 1);
+    const cols = split === 4 ? 2 : split;
+    const rows = split === 4 ? 2 : 1;
+    area.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+    area.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+    zones = [];
+    for (let i = 0; i < split; i++) {
+      const z = document.createElement('div');
+      z.className = 'zone';
+      z.innerHTML = `<div class="zname">${i + 1}칸</div>
+        <div class="zcount">지금 <b data-now>0</b> · 누른 횟수 <b data-taps>0</b></div>`;
+      area.appendChild(z);
+      zones.push({ el: z, now: 0, taps: 0 });
+    }
+    const hint = document.createElement('div');
+    hint.className = 'hint';
+    hint.textContent = split === 1 ? '여기를 여러 손가락으로 동시에 눌러 보세요' : '';
+    area.appendChild(hint);
+  }
+
+  // 배틀 앱과 같은 판정: 처음 닿은 좌표로 칸을 정한다.
+  function zoneAt(x, y) {
+    const r = area.getBoundingClientRect();
+    const cols = split === 4 ? 2 : split;
+    const rows = split === 4 ? 2 : 1;
+    const c = Math.min(cols - 1, Math.max(0, Math.floor(((x - r.left) / r.width) * cols)));
+    const rr = Math.min(rows - 1, Math.max(0, Math.floor(((y - r.top) / r.height) * rows)));
+    return rr * cols + c;
+  }
+
+  function renderZone(i) {
+    const z = zones[i];
+    z.el.classList.toggle('active', z.now > 0);
+    z.el.querySelector('[data-now]').textContent = z.now;
+    z.el.querySelector('[data-taps]').textContent = z.taps;
+  }
+
+  function placeDot(p, e) {
+    const r = area.getBoundingClientRect();
+    const x = e.clientX - r.left;
+    const y = e.clientY - r.top;
+    p.el.style.transform = `translate(${x}px, ${y}px)`;
+    p.label.textContent = `${Math.round(e.clientX)}, ${Math.round(e.clientY)} · ${typeName(e.pointerType)}`;
+  }
+
+  function typeName(t) {
+    return t === 'touch' ? '손가락' : t === 'pen' ? '펜' : t === 'mouse' ? '마우스' : (t || '알 수 없음');
+  }
+
+  function updateCounts() {
+    const n = active.size;
+    nowEl.textContent = n;
+    if (n > maxCount) {
+      maxCount = n;
+      maxAt = new Date();
+      maxEl.textContent = maxCount;
+    }
+    // 개발 순서 0번 기준: 4점 미만이면 배틀은 2분할을 기본으로.
+    verdictEl.classList.remove('good', 'mid');
+    if (maxCount >= 4) {
+      verdictEl.textContent = '배틀 4분할 가능';
+      verdictEl.classList.add('good');
+    } else if (maxCount >= 2) {
+      verdictEl.textContent = `${maxCount}점까지 확인 → 배틀은 2분할 기본`;
+      verdictEl.classList.add('mid');
+    } else {
+      verdictEl.textContent = '여러 손가락으로 동시에 눌러 보세요';
+    }
+    if (infoEl.classList.contains('open')) renderInfo();
+  }
+
+  area.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    if (active.has(e.pointerId)) return;
+    try { area.setPointerCapture(e.pointerId); } catch (_) { /* 일부 기기는 지원 안 함 */ }
+    typesSeen.add(e.pointerType);
+
+    const color = COLORS[order % COLORS.length];
+    order++;
+    const el = document.createElement('div');
+    el.className = 'dot';
+    el.style.color = color;
+    const ring = document.createElement('div');
+    ring.className = 'ring';
+    const num = document.createElement('span');
+    ring.appendChild(num);
+    const label = document.createElement('div');
+    label.className = 'label';
+    el.append(ring, label);
+    area.appendChild(el);
+
+    const zone = zoneAt(e.clientX, e.clientY);
+    const p = { el, label, num, zone };
+    active.set(e.pointerId, p);
+    zones[zone].now++;
+    zones[zone].taps++;
+    renderZone(zone);
+
+    placeDot(p, e);
+    renumber();
+    updateCounts();
+  });
+
+  area.addEventListener('pointermove', (e) => {
+    const p = active.get(e.pointerId);
+    if (!p) return;
+    e.preventDefault();
+    placeDot(p, e);
+  });
+
+  function release(e) {
+    const p = active.get(e.pointerId);
+    if (!p) return;
+    p.el.remove();
+    active.delete(e.pointerId);
+    zones[p.zone].now = Math.max(0, zones[p.zone].now - 1);
+    renderZone(p.zone);
+    renumber();
+    updateCounts();
+  }
+  area.addEventListener('pointerup', release);
+  area.addEventListener('pointercancel', release);
+  area.addEventListener('lostpointercapture', release);
+
+  // 닿아 있는 점에 1, 2, 3… 번호를 다시 붙인다.
+  function renumber() {
+    let i = 1;
+    for (const p of active.values()) p.num.textContent = i++;
+  }
+
+  function clearActive() {
+    for (const p of active.values()) p.el.remove();
+    active.clear();
+  }
+
+  document.getElementById('reset').addEventListener('click', () => {
+    clearActive();
+    maxCount = 0;
+    maxAt = null;
+    order = 0;
+    typesSeen.clear();
+    maxEl.textContent = '0';
+    buildZones();
+    updateCounts();
+  });
+
+  document.querySelectorAll('[data-split]').forEach((b) => {
+    b.addEventListener('click', () => {
+      split = Number(b.dataset.split);
+      document.querySelectorAll('[data-split]').forEach((o) => o.setAttribute('aria-pressed', String(o === b)));
+      clearActive();
+      buildZones();
+      updateCounts();
+    });
+  });
+
+  function summary() {
+    const s = window.screen;
+    const t = maxAt ? maxAt.toLocaleString('ko-KR') : '-';
+    return [
+      `확인 일시: ${new Date().toLocaleString('ko-KR')}`,
+      `최대 동시 터치: ${maxCount}점 (측정 시각 ${t})`,
+      `입력 종류: ${[...typesSeen].map(typeName).join(', ') || '-'}`,
+      `브라우저가 알려 준 최대 터치 수(navigator.maxTouchPoints): ${navigator.maxTouchPoints}`,
+      `화면: ${s.width}×${s.height} (배율 ${window.devicePixelRatio}), 창 ${window.innerWidth}×${window.innerHeight}`,
+      `브라우저: ${navigator.userAgent}`,
+    ].join('\n');
+  }
+
+  function renderInfo() {
+    infoText.innerHTML = summary()
+      .split('\n')
+      .map((l) => `<div>${l.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</div>`)
+      .join('');
+  }
+
+  const infoBtn = document.getElementById('infoBtn');
+  infoBtn.addEventListener('click', () => {
+    const open = infoEl.classList.toggle('open');
+    infoBtn.setAttribute('aria-pressed', String(open));
+    if (open) renderInfo();
+  });
+
+  document.getElementById('copy').addEventListener('click', async () => {
+    const text = summary();
+    let ok = false;
+    try {
+      await navigator.clipboard.writeText(text);
+      ok = true;
+    } catch (_) {
+      // file:// 나 오래된 브라우저에서는 clipboard API가 막힐 수 있다.
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      try { ok = document.execCommand('copy'); } catch (_) { ok = false; }
+      ta.remove();
+    }
+    const c = document.getElementById('copied');
+    c.textContent = ok ? '복사했어요' : '복사가 안 돼요. 위 글을 직접 적어 주세요';
+    c.hidden = false;
+    setTimeout(() => { c.hidden = true; }, 2500);
+  });
+
+  // 길게 누르기 메뉴, 두 손가락 확대 등 브라우저 기본 동작 막기
+  document.addEventListener('contextmenu', (e) => e.preventDefault());
+  document.addEventListener('gesturestart', (e) => e.preventDefault());
+
+  buildZones();
+  updateCounts();
+</script>
+</body>
+</html>
+
+<!--
+================================================================
+현장 확인 기록
+================================================================
+교실 전자칠판에서 이 페이지를 열고 손가락 4~5개로 동시에 눌러 본 뒤,
+'기기 정보 → 기록용 글 복사'로 나온 내용을 아래에 붙여 넣는다.
+칸 2·3·4로 바꿔서 여러 명이 동시에 눌러도 칸끼리 간섭하지 않는지도 적는다.
+
+[전자칠판]
+- 기종:
+- 브라우저:
+- 최대 동시 터치 수: 4점 이상 (2026-10-10, 교실에서 평소 쓰는 다른 프로그램으로 확인)
+- 4칸 동시 터치 간섭 여부:
+- 결론(배틀 기본 분할): 4분할(2×2)
+
+[태블릿]
+- 기종:
+- 브라우저:
+- 최대 동시 터치 수:
+================================================================
+-->

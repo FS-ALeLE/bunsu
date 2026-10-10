@@ -1,0 +1,257 @@
+/* 분수 탐험대 공통 스타일
+   - 태블릿 모드(기본, 가로 1280×800 기준)
+   - 칠판 모드: <html class="board"> (?mode=board) — 글씨 최소 40px, 버튼 최소 80px
+   크기는 rem으로 적어 두어 칠판 모드에서 함께 커진다. */
+
+:root {
+  --bg: #fff8ef;
+  --panel: #ffffff;
+  --ink: #2d2a26;
+  --sub: #6d665d;
+  --line: #e8dccb;
+  --shade: #f7a04b;        /* 색칠 색(주황) — 한 가지만 쓴다 */
+  --shade-deep: #e07f1f;
+  --ok: #2fa463;           /* 정답 */
+  --ok-soft: #dcf3e4;
+  --retry: #ffd23f;        /* 오답 대신 '다시 해 볼까?' */
+  --retry-soft: #fff4c4;
+  --primary: #3a7bd5;      /* 버튼(색칠 색과 헷갈리지 않게 파랑) */
+  --primary-soft: #e3eefc;
+  --radius: 0.8rem;
+  font-size: 20px;
+}
+
+html.board { font-size: max(40px, 2.1vw); }
+
+* { box-sizing: border-box; }
+
+html, body { margin: 0; min-height: 100%; }
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  font-size: 1rem;
+  line-height: 1.4;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+input, textarea { -webkit-user-select: text; user-select: text; }
+
+button, input, select, textarea { font: inherit; color: inherit; }
+
+[hidden] { display: none !important; }
+
+/* ---------- 버튼 ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4em;
+  min-height: 2.6rem;
+  min-width: 2.6rem;
+  padding: 0 1rem;
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  font-weight: 700;
+  font-size: 1rem;
+  text-decoration: none;
+  color: var(--ink);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform 0.06s, background-color 0.15s;
+}
+.btn:active { transform: scale(0.96); }
+.btn:disabled { opacity: 0.45; cursor: default; }
+.btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+.btn-soft { background: var(--primary-soft); border-color: var(--primary-soft); color: #1d4f99; }
+.btn-big { min-height: 3.4rem; padding: 0 1.6rem; font-size: 1.3rem; }
+.btn-icon { padding: 0; font-size: 1.2rem; }
+.btn[aria-pressed="true"], .btn.selected { background: var(--primary); border-color: var(--primary); color: #fff; }
+html.board .btn { min-height: max(80px, 2rem); min-width: max(80px, 2rem); }
+
+/* ---------- 세로 분수 ---------- */
+.frac {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: stretch;
+  vertical-align: middle;
+  font-weight: 800;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  min-width: 1.2em;
+}
+.frac-n { padding: 0 0.15em 0.08em; }
+.frac-d { padding: 0.08em 0.15em 0; border-top: 0.09em solid currentColor; }
+.frac-n:empty::before, .frac-d:empty::before { content: "\00a0"; }
+.frac.big { font-size: 3rem; }
+.frac.huge { font-size: 5rem; }
+
+/* ---------- 도형 ---------- */
+svg.shape { display: block; width: 100%; height: 100%; overflow: visible; }
+svg.shape .piece { transition: fill 0.12s; }
+svg.shape .piece.on { fill: var(--shade); }
+svg.shape.paintable .piece { cursor: pointer; }
+svg.shape .piece.answer { fill: var(--ok); }
+svg.shape .piece-num { font-weight: 800; fill: var(--ink); font-family: inherit; }
+svg.shape.paintable, .touch-area { touch-action: none; }
+
+/* ---------- 상단 막대 ---------- */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.8rem;
+  background: var(--panel);
+  border-bottom: 2px solid var(--line);
+}
+.topbar-title { margin: 0; font-size: 1.2rem; white-space: nowrap; }
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; }
+.home { font-size: 1.4rem; }
+.save-status {
+  font-size: 0.7rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 1rem;
+  background: #f1ece4;
+  color: var(--sub);
+  white-space: nowrap;
+}
+.save-status[data-state="online"] { background: var(--ok-soft); color: #1d6b40; }
+.save-status[data-state="offline"] { background: var(--retry-soft); color: #7a5c00; }
+.badge {
+  display: inline-flex; align-items: center; gap: 0.3em;
+  padding: 0.2rem 0.7rem; border-radius: 1rem;
+  background: var(--primary-soft); color: #1d4f99; font-weight: 800; white-space: nowrap;
+}
+
+/* ---------- 알림 ---------- */
+.feedback {
+  position: fixed;
+  left: 50%; top: 45%;
+  transform: translate(-50%, -50%) scale(1);
+  z-index: 100;
+  padding: 0.8rem 2rem;
+  border-radius: 1.2rem;
+  font-size: 2.2rem;
+  font-weight: 900;
+  box-shadow: 0 0.4rem 1.6rem rgba(0, 0, 0, 0.15);
+  pointer-events: none;
+  animation: pop 0.25s ease-out;
+  white-space: nowrap;
+}
+.feedback.out { opacity: 0; transition: opacity 0.25s; }
+.feedback-correct { background: var(--ok); color: #fff; }
+.feedback-retry { background: var(--retry); color: #4d3b00; }
+.feedback-level { background: var(--primary); color: #fff; }
+.feedback-info { background: var(--panel); color: var(--ink); }
+@keyframes pop { from { transform: translate(-50%, -50%) scale(0.6); opacity: 0; } }
+
+.spark {
+  position: fixed; width: 0.5rem; height: 0.5rem; border-radius: 50%;
+  pointer-events: none; z-index: 101;
+  animation: spark 0.7s ease-out forwards;
+}
+@keyframes spark { to { transform: translate(var(--dx), var(--dy)); opacity: 0; } }
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-0.5rem); }
+  40%, 80% { transform: translateX(0.5rem); }
+}
+.shake { animation: shake 0.4s linear 0s 5; }
+
+/* ---------- 숫자 패드 ---------- */
+.numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem; }
+.numpad-key { min-height: 2.8rem; font-size: 1.3rem; }
+
+/* ---------- 덮개 창(로그인 등) ---------- */
+.overlay {
+  position: fixed; inset: 0; z-index: 50;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(45, 42, 38, 0.35);
+  padding: 1rem;
+}
+.panel, .login-box {
+  background: var(--panel);
+  border-radius: 1.2rem;
+  padding: 1.2rem 1.4rem;
+  box-shadow: 0 0.5rem 2rem rgba(0, 0, 0, 0.15);
+  max-width: 100%;
+  max-height: 100%;
+  overflow: auto;
+}
+.login-box { width: 22rem; display: flex; flex-direction: column; gap: 0.6rem; }
+.login-box h1 { margin: 0; font-size: 1.4rem; }
+.login-sub, .login-class { margin: 0; color: var(--sub); }
+.login-field { display: flex; align-items: center; gap: 0.6rem; }
+.login-field > span { width: 4.5rem; color: var(--sub); font-weight: 700; }
+.text-input {
+  flex: 1; min-width: 0; min-height: 2.6rem; padding: 0 0.7rem;
+  border: 2px solid var(--line); border-radius: var(--radius); background: #fff;
+}
+.text-input:focus { outline: 3px solid var(--primary-soft); border-color: var(--primary); }
+.login-no {
+  flex: 1; min-height: 2.6rem; display: flex; align-items: center; padding: 0 0.7rem;
+  border: 2px solid var(--line); border-radius: var(--radius); font-size: 1.3rem; font-weight: 800;
+}
+.login-no.empty { color: #b8afa3; font-weight: 400; font-size: 1rem; }
+.login-msg { margin: 0; min-height: 1.4em; color: #8a6a00; font-weight: 700; }
+
+/* ---------- 공통 배치 ---------- */
+.app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; }
+.app-main { flex: 1; min-height: 0; display: flex; overflow: auto; }
+.row { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; }
+.col { display: flex; flex-direction: column; gap: 0.6rem; }
+.center { display: flex; align-items: center; justify-content: center; }
+.muted { color: var(--sub); }
+.card {
+  background: var(--panel);
+  border: 2px solid var(--line);
+  border-radius: 1rem;
+  padding: 0.8rem;
+}
+.prompt-text { font-size: 1.5rem; font-weight: 800; margin: 0; }
+.segmented { display: inline-flex; flex-wrap: wrap; gap: 0.3rem; }
+
+/* ---------- 세로 분수 입력 칸(분자/분모 + 숫자 패드) ---------- */
+.frac-input { display: flex; flex-direction: column; align-items: center; gap: 0.3rem; }
+.frac-input .slot {
+  width: 6rem; height: 4.4rem; border: 3px solid var(--line); border-radius: 0.8rem; background: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2.8rem; font-weight: 900; cursor: pointer; touch-action: manipulation;
+}
+.frac-input .slot.active { border-color: var(--primary); box-shadow: 0 0 0 4px var(--primary-soft); }
+.frac-input .slot.good { border-color: var(--ok); background: var(--ok-soft); }
+.frac-input .bar { width: 7rem; height: 0.35rem; border-radius: 1rem; background: var(--ink); }
+.frac-input .slot-label { font-size: 0.8rem; color: var(--sub); }
+
+/* ---------- 학생이 만든 문제(problem.js) ---------- */
+.problem { display: flex; flex-direction: column; gap: 0.8rem; width: 100%; }
+.problem-prompt { text-align: center; }
+.problem-body { display: grid; grid-template-columns: minmax(0, 1fr) 18rem; gap: 1rem; align-items: center; }
+.problem-visual { display: flex; align-items: center; justify-content: center; min-height: 0; }
+.problem-visual svg.shape { width: 100%; max-height: 22rem; }
+.problem-input { display: flex; flex-direction: column; gap: 0.6rem; align-items: stretch; }
+.problem-photo { max-width: 100%; max-height: 22rem; border-radius: 1rem; object-fit: contain; background: #f3eee6; }
+.pick-row { display: flex; align-items: center; justify-content: center; gap: 1rem; }
+.pick-vs { font-size: 1.3rem; font-weight: 800; color: var(--sub); }
+.pick-card { flex: 0 1 16rem; flex-direction: column; padding: 0.8rem; min-height: 9rem; border-width: 3px; }
+.pick-card .frac { font-size: 3rem; }
+.pick-fig { width: 100%; height: 8rem; }
+.pick-same { min-width: 12rem; }
+.yn { min-width: 13rem; }
+.is-answer { border-color: var(--ok) !important; background: var(--ok-soft) !important; color: #1d6b40 !important; opacity: 1 !important; }
+.is-wrong { border-color: var(--retry) !important; background: var(--retry-soft) !important; opacity: 1 !important; }
+.preview { display: flex; gap: 0.8rem; align-items: center; }
+.preview-visual { width: 9rem; flex: none; display: flex; align-items: center; justify-content: center; }
+.preview-visual svg.shape { width: 9rem; height: 6rem; }
+.preview-visual .row svg.shape { width: 3.5rem; height: 2.5rem; }
+.preview-visual .frac { font-size: 1.1rem; }
+.preview-visual .problem-photo { max-height: 6rem; }
+.preview-text { font-size: 0.9rem; }

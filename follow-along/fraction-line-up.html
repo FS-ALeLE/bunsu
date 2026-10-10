@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<title>분수 줄 세우기</title>
+<style>
+/* Layout: board practice — set picker, card tray, five ordered slots (small → big), check reveals strip models under each slot. Bright single look. */
+:root{
+  --bg:#EEF4FA; --panel:#FFFFFF; --ink:#16263B; --muted:#5B6B80; --rule:#D3E0EE;
+  --card:#FFF6E5; --cardEdge:#FF8A1F; --fill:#FF8A1F; --good:#14996A; --bad:#D9483B; --focus:#2F6FE0;
+  --font:"Pretendard","Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",system-ui,sans-serif;
+  color-scheme:light;
+}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);margin:0}
+.app{box-sizing:border-box;min-height:100%;display:flex;flex-direction:column;gap:clamp(10px,2vh,22px);padding-inline:clamp(16px,3vw,40px);padding-block:clamp(10px,2vh,24px);max-width:1400px;margin:0 auto}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+h1{margin:0;font-size:clamp(24px,3.4vw,46px);font-weight:800;letter-spacing:-0.02em}
+.sets{display:flex;gap:8px;flex-wrap:wrap}
+.set{font-family:inherit;font-weight:800;font-size:clamp(15px,1.8vw,24px);padding:10px 18px;border-radius:14px;border:2px solid var(--ink);background:var(--panel);color:var(--ink);cursor:pointer}
+.set[aria-pressed="true"]{background:var(--ink);color:#fff}
+.label{margin:0;font-size:clamp(16px,2vw,26px);font-weight:700;color:var(--muted)}
+.tray{min-height:clamp(120px,18vh,190px);background:var(--panel);border:2px dashed #AFC3D9;border-radius:22px;display:flex;flex-wrap:wrap;gap:clamp(10px,1.6vw,22px);align-items:center;justify-content:center;padding:14px}
+.card{touch-action:none;user-select:none;-webkit-user-select:none;width:clamp(78px,10vw,140px);height:clamp(104px,14vw,180px);border-radius:18px;background:var(--card);border:4px solid var(--cardEdge);display:flex;align-items:center;justify-content:center;cursor:grab;box-shadow:0 5px 0 rgba(22,38,59,.18);font-size:clamp(34px,4.6vw,66px)}
+.card.dragging{cursor:grabbing;box-shadow:0 14px 28px rgba(22,38,59,.28);z-index:10}
+.frac{display:inline-flex;flex-direction:column;align-items:center;font-weight:900;line-height:1.02;font-variant-numeric:tabular-nums}
+.frac .bar{align-self:stretch;height:5px;background:currentColor;margin:4px 0;border-radius:3px}
+.line{display:grid;gap:clamp(8px,1.4vw,18px)}
+.direction{display:flex;justify-content:space-between;font-size:clamp(16px,2vw,26px);font-weight:800;color:var(--muted)}
+.direction span:nth-child(2){flex:1;margin:0 14px;align-self:center;height:4px;background:linear-gradient(90deg,var(--rule),var(--ink));border-radius:2px;position:relative}
+.direction span:nth-child(2)::after{content:"";position:absolute;right:-2px;top:-8px;border-left:16px solid var(--ink);border-top:10px solid transparent;border-bottom:10px solid transparent}
+.slots{display:grid;gap:clamp(8px,1.4vw,18px)}
+.slot{background:var(--panel);border:3px solid var(--rule);border-radius:20px;min-height:clamp(140px,20vw,240px);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:10px;padding:12px 8px}
+.slot .seat{width:clamp(78px,10vw,140px);height:clamp(104px,14vw,180px);border-radius:18px;border:3px dashed #AFC3D9;display:flex;align-items:center;justify-content:center;color:#AFC3D9;font-weight:800;font-size:clamp(18px,2vw,26px)}
+.slot .seat.filled{border:0}
+.slot.hover{border-color:var(--ink)}
+.slot.ok{border-color:var(--good);background:#E7F6EF}
+.slot.no{border-color:var(--bad);background:#FCECEA}
+.slot svg{width:100%;height:auto;display:block}
+.actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.btn{font-family:inherit;font-weight:800;font-size:clamp(18px,2.2vw,30px);padding:14px 30px;border-radius:16px;border:0;background:var(--ink);color:#fff;cursor:pointer}
+.btn.ghost{background:var(--panel);color:var(--ink);border:2px solid var(--ink)}
+.msg{margin:0;text-align:center;min-height:1.3em;font-size:clamp(20px,2.6vw,36px);font-weight:800}
+.msg.good{color:var(--good)} .msg.bad{color:var(--bad)}
+button:focus-visible{outline:4px solid var(--focus);outline-offset:3px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="app">
+  <header>
+    <h1>분수 줄 세우기</h1>
+    <div class="sets">
+      <button class="set" aria-pressed="true" data-set="same" id="setSame">분모가 같은 분수</button>
+      <button class="set" aria-pressed="false" data-set="unit" id="setUnit">단위분수</button>
+    </div>
+  </header>
+  <p class="label">카드를 끌어서 작은 수부터 차례로 놓아 보세요.</p>
+  <div class="tray" id="tray" aria-label="분수 카드"></div>
+  <div class="line">
+    <div class="direction"><span>작은 수</span><span aria-hidden="true"></span><span>큰 수</span></div>
+    <div class="slots" id="slots"></div>
+  </div>
+  <p class="msg" id="msg" aria-live="polite"></p>
+  <div class="actions">
+    <button class="btn ghost" id="btnNew">새 문제</button>
+    <button class="btn" id="btnCheck">확인</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  const NS = "http://www.w3.org/2000/svg";
+  const $ = id => document.getElementById(id);
+  const randInt = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+  const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  const fracHTML = (n, d) => `<span class="frac"><span>${n}</span><span class="bar"></span><span>${d}</span></span>`;
+  let mode = "same", cards = [], checked = false, lastKey = "";
+
+  function makeSet() {
+    const k = randInt(4, 5);
+    let list;
+    if (mode === "same") {
+      const d = randInt(Math.max(k + 1, 5), 12);
+      const nums = shuffle(Array.from({ length: d - 1 }, (_, i) => i + 1)).slice(0, k);
+      list = nums.map(n => ({ n, d }));
+    } else {
+      const ds = shuffle(Array.from({ length: 11 }, (_, i) => i + 2)).slice(0, k);
+      list = ds.map(d => ({ n: 1, d }));
+    }
+    const key = list.map(f => f.n + "/" + f.d).sort().join();
+    if (key === lastKey) return makeSet();
+    lastKey = key;
+    return shuffle(list);
+  }
+
+  function newProblem() {
+    checked = false;
+    $("msg").textContent = ""; $("msg").className = "msg";
+    const set = makeSet();
+    $("tray").innerHTML = ""; $("slots").innerHTML = "";
+    $("slots").style.gridTemplateColumns = `repeat(${set.length}, minmax(0, 1fr))`;
+    set.forEach((f, i) => {
+      const slot = document.createElement("div");
+      slot.className = "slot"; slot.dataset.i = i;
+      slot.innerHTML = `<div class="seat">${i + 1}</div>`;
+      $("slots").appendChild(slot);
+    });
+    cards = set.map(f => {
+      const c = document.createElement("div");
+      c.className = "card"; c.innerHTML = fracHTML(f.n, f.d);
+      c.dataset.v = f.n / f.d; c.dataset.n = f.n; c.dataset.d = f.d;
+      c.setAttribute("aria-label", `${f.d}분의 ${f.n}`);
+      $("tray").appendChild(c);
+      enableDrag(c);
+      return c;
+    });
+  }
+
+  // ---------- drag with pointer events (finger, pen, mouse) ----------
+  function enableDrag(card) {
+    card.addEventListener("pointerdown", e => {
+      if (checked) clearCheck();
+      e.preventDefault();
+      card.setPointerCapture(e.pointerId);
+      const r = card.getBoundingClientRect();
+      const ox = e.clientX - r.left, oy = e.clientY - r.top;
+      const place = document.createElement("div"); // keeps the gap while the card floats
+      place.style.width = r.width + "px"; place.style.height = r.height + "px";
+      card.parentNode.insertBefore(place, card);
+      Object.assign(card.style, { position: "fixed", left: r.left + "px", top: r.top + "px", width: r.width + "px", height: r.height + "px" });
+      card.classList.add("dragging");
+      document.body.appendChild(card);
+      let over = null, overTray = false;
+      const move = ev => {
+        card.style.left = ev.clientX - ox + "px"; card.style.top = ev.clientY - oy + "px";
+        card.style.visibility = "hidden";
+        const under = document.elementFromPoint(ev.clientX, ev.clientY);
+        card.style.visibility = "";
+        const slot = under && under.closest(".slot");
+        overTray = !!(under && under.closest("#tray"));
+        if (over && over !== slot) over.classList.remove("hover");
+        over = slot; if (slot) slot.classList.add("hover");
+      };
+      const up = ev => {
+        card.removeEventListener("pointermove", move);
+        card.removeEventListener("pointerup", up);
+        card.removeEventListener("pointercancel", up);
+        card.classList.remove("dragging");
+        card.removeAttribute("style");
+        if (over) over.classList.remove("hover");
+        if (over) {
+          const seat = over.querySelector(".seat");
+          const old = seat.querySelector(".card");
+          if (old) $("tray").appendChild(old); // bump the card that was there back to the tray
+          seat.textContent = ""; seat.classList.add("filled"); seat.appendChild(card);
+          place.remove();
+        } else if (overTray) {
+          $("tray").appendChild(card); place.remove();
+        } else {
+          place.replaceWith(card);
+        }
+        tidySeats();
+      };
+      card.addEventListener("pointermove", move);
+      card.addEventListener("pointerup", up);
+      card.addEventListener("pointercancel", up);
+    });
+  }
+  function tidySeats() {
+    document.querySelectorAll(".slot").forEach((s, i) => {
+      const seat = s.querySelector(".seat");
+      if (!seat.querySelector(".card")) { seat.classList.remove("filled"); seat.textContent = i + 1; }
+      // a card dropped back on the tray from a slot leaves an empty seat
+    });
+    [...$("tray").children].forEach(ch => { if (!ch.classList.contains("card")) ch.remove(); });
+  }
+
+  // ---------- check ----------
+  function stripSVG(n, d, color) {
+    const svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("viewBox", "0 0 200 44");
+    const cw = 192 / d;
+    for (let i = 0; i < d; i++) {
+      const r = document.createElementNS(NS, "rect");
+      r.setAttribute("x", 4 + i * cw); r.setAttribute("y", 4); r.setAttribute("width", cw); r.setAttribute("height", 36);
+      r.setAttribute("fill", i < n ? color : "#FFFFFF"); r.setAttribute("stroke", "#16263B"); r.setAttribute("stroke-width", 2.5);
+      svg.appendChild(r);
+    }
+    return svg;
+  }
+  function clearCheck() {
+    checked = false;
+    document.querySelectorAll(".slot").forEach(s => { s.classList.remove("ok", "no"); s.querySelector("svg")?.remove(); });
+    $("msg").textContent = ""; $("msg").className = "msg";
+  }
+  function check() {
+    const slots = [...document.querySelectorAll(".slot")];
+    const placed = slots.map(s => s.querySelector(".card"));
+    if (placed.some(c => !c)) { $("msg").className = "msg bad"; $("msg").textContent = "카드를 모두 칸에 놓아 주세요."; return; }
+    clearCheck(); checked = true;
+    const sorted = placed.map(c => +c.dataset.v).slice().sort((a, b) => a - b);
+    let allOk = true;
+    slots.forEach((s, i) => {
+      const c = placed[i], ok = +c.dataset.v === sorted[i];
+      if (!ok) allOk = false;
+      s.classList.add(ok ? "ok" : "no");
+      s.appendChild(stripSVG(+c.dataset.n, +c.dataset.d, getComputedStyle(document.documentElement).getPropertyValue("--fill").trim()));
+    });
+    $("msg").className = "msg " + (allOk ? "good" : "bad");
+    $("msg").textContent = allOk ? "완벽해요! 색칠한 길이가 점점 길어져요." : "빨간 칸을 다시 보세요. 색칠한 길이를 비교해 볼까요?";
+  }
+
+  document.querySelectorAll(".set").forEach(b => b.addEventListener("click", () => {
+    mode = b.dataset.set;
+    document.querySelectorAll(".set").forEach(x => x.setAttribute("aria-pressed", x === b));
+    newProblem();
+  }));
+  $("btnNew").addEventListener("click", newProblem);
+  $("btnCheck").addEventListener("click", check);
+  newProblem();
+})();
+</script>
+
+</body>
+</html>

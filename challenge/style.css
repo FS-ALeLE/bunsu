@@ -1,0 +1,48 @@
+/* 분수 비교 챌린지 */
+
+.ch { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 0.8rem; padding: 0.8rem 1.2rem 1rem; overflow: auto; }
+
+/* 내 탐험 위치 */
+.path { display: flex; gap: 0.4rem; justify-content: center; flex-wrap: wrap; }
+.path-step {
+  display: flex; align-items: center; gap: 0.4rem;
+  padding: 0.3rem 0.8rem; border-radius: 2rem; background: #efe8de; color: var(--sub); font-weight: 700; font-size: 0.85rem;
+}
+.path-step b { display: inline-flex; width: 1.6rem; height: 1.6rem; border-radius: 50%; align-items: center; justify-content: center; background: #fff; }
+.path-step.done { background: var(--ok-soft); color: #1d6b40; }
+.path-step.now { background: var(--primary); color: #fff; }
+.path-step.now b { color: var(--primary); }
+
+.ch-title { text-align: center; margin: 0; font-size: 1.3rem; font-weight: 800; }
+
+.versus { display: flex; align-items: stretch; justify-content: center; gap: 1.2rem; }
+.side-card {
+  flex: 0 1 18rem; display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
+  background: var(--panel); border: 2px solid var(--line); border-radius: 1.2rem; padding: 1rem;
+}
+.side-card .frac { font-size: 4.2rem; }
+.side-card .shape-slot { width: 100%; height: 9rem; }
+.side-card .read { color: var(--sub); font-weight: 700; }
+
+.gap { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.8rem; }
+.gap-box {
+  width: 5.5rem; height: 5.5rem; border: 4px dashed #cbbfae; border-radius: 1rem; background: #fff;
+  display: flex; align-items: center; justify-content: center; font-size: 3.6rem; font-weight: 900;
+}
+.gap-box.good { border-style: solid; border-color: var(--ok); background: var(--ok-soft); color: #1d6b40; }
+.gap-box.again { border-style: solid; border-color: var(--retry); background: var(--retry-soft); }
+.symbols { display: flex; gap: 0.5rem; }
+.symbols .btn { width: 4.2rem; height: 4.2rem; font-size: 2.4rem; padding: 0; }
+
+.reasons { display: flex; flex-direction: column; gap: 0.5rem; max-width: 40rem; margin: 0 auto; width: 100%; }
+.reasons p { margin: 0; font-weight: 800; text-align: center; }
+.reasons .btn { justify-content: flex-start; text-align: left; min-height: 3rem; font-size: 1.05rem; }
+
+/* 띠 모형 힌트 */
+.bar-hint { max-width: 40rem; width: 100%; margin: 0 auto; background: var(--panel); border: 2px dashed var(--line); border-radius: 1rem; padding: 0.6rem 1rem; }
+.bar-hint p { margin: 0 0 0.3rem; color: var(--sub); font-weight: 700; }
+.bar-row { display: grid; grid-template-columns: 4rem 1fr; align-items: center; gap: 0.6rem; }
+.bar-row .frac { font-size: 1.6rem; justify-self: center; }
+.bar-row svg { width: 100%; height: 4.4rem; }
+
+.answer-line { text-align: center; margin: 0; min-height: 1.5em; font-weight: 800; color: #1d6b40; font-size: 1.1rem; }

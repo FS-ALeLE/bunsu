@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>도형 미리보기</title>
+<link rel="stylesheet" href="../common/ui.css">
+<style>
+  body { padding: 1rem; font-size: 16px; }
+  h1 { margin: 0 0 0.3rem; }
+  .summary { margin: 0.5rem 0 1rem; font-weight: 800; }
+  .summary.ok { color: #1d6b40; }
+  .summary.bad { color: #b03a2e; }
+  table { border-collapse: collapse; }
+  th, td { border: 1px solid var(--line); padding: 4px; text-align: center; vertical-align: top; }
+  th { background: #f6efe5; position: sticky; top: 0; z-index: 1; white-space: nowrap; }
+  td .cell { width: 92px; }
+  td .cell svg { width: 92px; height: 92px; }
+  td .info { font-size: 11px; color: var(--sub); }
+  td .info.bad { color: #b03a2e; font-weight: 800; }
+  td.none { background: #f3f0ec; color: #b8afa3; font-size: 12px; }
+  .tests li.bad { color: #b03a2e; font-weight: 800; }
+  .wrap { overflow: auto; max-height: 80vh; }
+</style>
+</head>
+<body>
+<h1>도형 미리보기</h1>
+<p class="muted">모든 모양 × 분모 2~12. 각 칸 아래 숫자는 조각 넓이 차이(가장 큰 조각 ÷ 가장 작은 조각 − 1)와 전체 넓이입니다.
+  사각형은 세로 띠와 격자(행×열) 나누기를 모두 그립니다. 조각을 눌러 색칠도 해 볼 수 있어요.</p>
+<label class="row"><input type="checkbox" id="nums"> 조각 번호 보이기</label>
+<p class="summary" id="summary"></p>
+<div class="wrap"><table id="tbl"></table></div>
+
+<h2>분수 함수 확인</h2>
+<ul class="tests" id="tests"></ul>
+<p>세로 표기 예: <span id="fracDemo"></span></p>
+
+<script type="module">
+  import { SHAPES, pieces, pieceArea, shapeAllows, gridOptions, drawShape, showNumbers } from '../common/shapes.js';
+  import * as F from '../common/fraction.js';
+
+  const tbl = document.getElementById('tbl');
+  const ds = F.range(2, 12);
+  let worst = 0;
+  let wholeWorst = 0;
+  const AREA = 14400;
+
+  const head = document.createElement('tr');
+  head.innerHTML = '<th>모양</th>' + ds.map((d) => `<th>${d}</th>`).join('');
+  tbl.appendChild(head);
+
+  const rows = [];
+  for (const s of SHAPES) {
+    if (s.type === 'square' || s.type === 'rect') {
+      rows.push({ ...s, label: `${s.name} 띠`, layout: 'strips' });
+      rows.push({ ...s, label: `${s.name} 격자`, layout: 'grid' });
+    } else rows.push({ ...s, label: s.name });
+  }
+
+  for (const r of rows) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<th>${r.label}</th>`;
+    for (const d of ds) {
+      const td = document.createElement('td');
+      if (!shapeAllows(r.type, d) || (r.layout === 'grid' && !gridOptions(d).length)) {
+        td.className = 'none';
+        td.textContent = r.type === 'hexagon' ? '숨김' : '-';
+        tr.appendChild(td);
+        continue;
+      }
+      const variants = r.layout === 'grid' ? gridOptions(d) : [null];
+      for (const g of variants) {
+        const ps = pieces(r.type, d, { layout: r.layout, grid: g });
+        const areas = ps.map(pieceArea);
+        const dev = Math.max(...areas) / Math.min(...areas) - 1;
+        const total = areas.reduce((a, b) => a + b, 0);
+        const wdev = Math.abs(total / AREA - 1);
+        worst = Math.max(worst, dev);
+        wholeWorst = Math.max(wholeWorst, wdev);
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        cell.appendChild(drawShape(r.type, d, [], { layout: r.layout, grid: g, interactive: true }));
+        const info = document.createElement('div');
+        info.className = 'info' + (dev > 1e-9 || wdev > 1e-6 ? ' bad' : '');
+        info.textContent = `${g ? g.join('×') + ' · ' : ''}차이 ${(dev * 100).toFixed(4)}% · 전체 ${total.toFixed(0)}`;
+        cell.appendChild(info);
+        td.appendChild(cell);
+      }
+      tr.appendChild(td);
+    }
+    tbl.appendChild(tr);
+  }
+
+  const sum = document.getElementById('summary');
+  const ok = worst < 1e-9 && wholeWorst < 1e-6;
+  sum.className = 'summary ' + (ok ? 'ok' : 'bad');
+  sum.textContent = ok
+    ? `✔ 모든 조각 넓이가 같고, 모든 모양의 전체 넓이가 같습니다 (최대 차이 ${(worst * 100).toExponential(1)}%).`
+    : `✘ 넓이가 다른 조각이 있습니다 (조각 최대 차이 ${(worst * 100).toFixed(4)}%, 전체 차이 ${(wholeWorst * 100).toFixed(4)}%).`;
+
+  document.getElementById('nums').addEventListener('change', (e) => {
+    document.querySelectorAll('svg.shape').forEach((s) => showNumbers(s, e.target.checked));
+  });
+
+  // 분수 함수 간단 확인
+  const tests = [
+    ['read(3/4) = "4분의 3"', F.read({ n: 3, d: 4 }) === '4분의 3'],
+    ['compare(2/5, 3/5) = -1', F.compare({ n: 2, d: 5 }, { n: 3, d: 5 }) === -1],
+    ['compare(1/3, 1/5) = 1', F.compare({ n: 1, d: 3 }, { n: 1, d: 5 }) === 1],
+    ['compare(4/4, 6/6) = 0', F.compare({ n: 4, d: 4 }, { n: 6, d: 6 }) === 0],
+    ['compareSymbol(1/8, 1/2) = "<"', F.compareSymbol({ n: 1, d: 8 }, { n: 1, d: 2 }) === '<'],
+    ['정육각형은 2·3·6만', F.range(2, 12).filter((d) => shapeAllows('hexagon', d)).join() === '2,3,6'],
+    ['randomFraction 진분수만(기본)', Array.from({ length: 500 }, () => F.randomFraction()).every((f) => f.n >= 1 && f.n < f.d && f.d >= 2 && f.d <= 12)],
+    ['randomFraction maxD 8', Array.from({ length: 500 }, () => F.randomFraction({ maxD: 8 })).every((f) => f.d <= 8)],
+    ['randomFraction whole 허용 시 n ≤ d', Array.from({ length: 500 }, () => F.randomFraction({ whole: true })).every((f) => f.n <= f.d)],
+    ['noRepeat: 같은 문제 연속 없음', (() => {
+      const next = F.noRepeat(() => F.randomFraction({ maxD: 3 }));
+      let prev = null;
+      for (let i = 0; i < 300; i++) { const f = next(); if (prev && F.same(prev, f)) return false; prev = f; }
+      return true;
+    })()],
+  ];
+  const ul = document.getElementById('tests');
+  for (const [name, pass] of tests) {
+    const li = document.createElement('li');
+    li.className = pass ? '' : 'bad';
+    li.textContent = `${pass ? '✔' : '✘'} ${name}`;
+    ul.appendChild(li);
+  }
+  const demo = document.getElementById('fracDemo');
+  [{ n: 3, d: 4 }, { n: 1, d: 12 }, { n: 7, d: 7 }].forEach((f) => {
+    demo.append(F.fractionEl(f, 'big'), ` (${F.read(f)})  `);
+  });
+</script>
+</body>
+</html>

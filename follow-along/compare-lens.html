@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<title>분수 비교 돋보기</title>
+<style>
+/* Layout: teacher demo for 전자칠판 — mode tabs on top, one large stage per mode, big controls at the bottom. Bright single look. */
+:root{
+  --bg:#EEF4FA; --panel:#FFFFFF; --ink:#16263B; --muted:#5B6B80; --rule:#D3E0EE;
+  --a:#FF8A1F; --b:#2E8BEA; --soft:#F3F7FB; --good:#14996A; --focus:#2F6FE0;
+  --font:"Pretendard","Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",system-ui,sans-serif;
+  color-scheme:light;
+}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);margin:0}
+.app{box-sizing:border-box;min-height:100%;display:flex;flex-direction:column;gap:clamp(10px,1.8vh,20px);padding-inline:clamp(16px,3vw,40px);padding-block:clamp(10px,2vh,24px);max-width:1400px;margin:0 auto}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+h1{margin:0;font-size:clamp(24px,3.4vw,46px);font-weight:800;letter-spacing:-0.02em}
+.tabs{display:flex;gap:8px;flex-wrap:wrap}
+.tab{font-family:inherit;font-weight:800;font-size:clamp(15px,1.8vw,24px);padding:10px 18px;border-radius:14px;border:2px solid var(--ink);background:var(--panel);color:var(--ink);cursor:pointer}
+.tab[aria-selected="true"]{background:var(--ink);color:#fff}
+.stage{background:var(--panel);border:2px solid var(--rule);border-radius:24px;padding:clamp(14px,2.4vw,32px);display:flex;flex-direction:column;gap:clamp(12px,2vh,24px);flex:1}
+.lead{margin:0;font-size:clamp(18px,2.4vw,32px);font-weight:700;color:var(--muted);text-align:center;text-wrap:balance}
+button:focus-visible,input:focus-visible{outline:4px solid var(--focus);outline-offset:3px}
+
+/* vertical fraction */
+.frac{display:inline-flex;flex-direction:column;align-items:center;font-weight:800;line-height:1.05;font-variant-numeric:tabular-nums}
+.frac .bar{align-self:stretch;height:.09em;min-height:3px;background:currentColor;margin:.08em 0;border-radius:2px}
+
+/* mode 1 */
+.row{display:grid;grid-template-columns:auto 1fr;gap:clamp(10px,2vw,28px);align-items:center}
+.row .frac{font-size:clamp(34px,5vw,72px);min-width:1.6em}
+.row.a .frac{color:var(--a)} .row.b .frac{color:var(--b)}
+.row svg{width:100%;height:auto;display:block}
+.sign{text-align:center;font-size:clamp(48px,7vw,96px);font-weight:900;line-height:1}
+.sign small{display:block;font-size:clamp(16px,2vw,26px);font-weight:700;color:var(--muted);margin-top:6px}
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:clamp(12px,2vw,28px)}
+.ctl{background:var(--soft);border-radius:18px;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.ctl h2{margin:0;font-size:clamp(16px,1.9vw,24px)}
+.ctl.a h2{color:var(--a)} .ctl.b h2{color:var(--b)}
+.knob{display:grid;grid-template-columns:4.2em auto 1fr auto;align-items:center;gap:10px;font-size:clamp(16px,1.8vw,24px);font-weight:700}
+.step{width:clamp(44px,5vw,64px);height:clamp(44px,5vw,64px);border-radius:14px;border:2px solid var(--ink);background:var(--panel);font-size:1.4em;font-weight:900;cursor:pointer;color:var(--ink);font-family:inherit}
+input[type=range]{width:100%;height:44px;accent-color:var(--ink)}
+.lock{display:flex;gap:10px;align-items:center;font-size:clamp(15px,1.7vw,22px);font-weight:700}
+.lock input{width:28px;height:28px}
+
+/* mode 2 & 3 */
+.ladder svg,.pizza svg{width:100%;height:auto;max-height:58vh;display:block}
+.actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.btn{font-family:inherit;font-weight:800;font-size:clamp(18px,2.2vw,30px);padding:14px 26px;border-radius:16px;border:0;background:var(--ink);color:#fff;cursor:pointer}
+.btn.ghost{background:var(--panel);color:var(--ink);border:2px solid var(--ink)}
+.note{margin:0;text-align:center;font-size:clamp(18px,2.4vw,32px);font-weight:800;color:var(--good);min-height:1.3em;text-wrap:balance}
+@media (max-width:760px){.controls{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="app">
+  <header>
+    <h1>분수 비교 돋보기</h1>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" aria-selected="true" data-mode="m1" id="t1">나란히 비교</button>
+      <button class="tab" role="tab" aria-selected="false" data-mode="m2" id="t2">단위분수 계단</button>
+      <button class="tab" role="tab" aria-selected="false" data-mode="m3" id="t3">함정 피자</button>
+    </div>
+  </header>
+
+  <!-- mode 1 -->
+  <section class="stage" id="m1">
+    <div class="row a"><div id="fa"></div><svg id="barA" viewBox="0 0 1000 130"></svg></div>
+    <div class="sign" id="sign"></div>
+    <div class="row b"><div id="fb"></div><svg id="barB" viewBox="0 0 1000 130"></svg></div>
+    <div class="controls">
+      <div class="ctl a"><h2>위 분수</h2>
+        <div class="knob"><span>분모</span><button class="step" data-k="da" data-d="-1" aria-label="위 분모 줄이기">−</button><input type="range" id="da" min="2" max="12" value="5"><button class="step" data-k="da" data-d="1" aria-label="위 분모 늘리기">+</button></div>
+        <div class="knob"><span>분자</span><button class="step" data-k="na" data-d="-1" aria-label="위 분자 줄이기">−</button><input type="range" id="na" min="0" max="5" value="2"><button class="step" data-k="na" data-d="1" aria-label="위 분자 늘리기">+</button></div>
+      </div>
+      <div class="ctl b"><h2>아래 분수</h2>
+        <div class="knob"><span>분모</span><button class="step" data-k="db" data-d="-1" aria-label="아래 분모 줄이기">−</button><input type="range" id="db" min="2" max="12" value="5"><button class="step" data-k="db" data-d="1" aria-label="아래 분모 늘리기">+</button></div>
+        <div class="knob"><span>분자</span><button class="step" data-k="nb" data-d="-1" aria-label="아래 분자 줄이기">−</button><input type="range" id="nb" min="0" max="5" value="4"><button class="step" data-k="nb" data-d="1" aria-label="아래 분자 늘리기">+</button></div>
+        <label class="lock"><input type="checkbox" id="same" checked> 두 분모를 같게 묶기</label>
+      </div>
+    </div>
+  </section>
+
+  <!-- mode 2 -->
+  <section class="stage" id="m2" hidden>
+    <p class="lead">전체를 똑같이 나누는 수가 많아지면, 한 조각은 어떻게 될까요?</p>
+    <div class="ladder"><svg id="ladder" viewBox="0 0 1000 760"></svg></div>
+    <div class="actions">
+      <button class="btn" id="play">시작</button>
+      <button class="btn ghost" id="next">한 줄씩</button>
+      <button class="btn ghost" id="reset2">처음부터</button>
+    </div>
+    <p class="note" id="note2"></p>
+  </section>
+
+  <!-- mode 3 -->
+  <section class="stage" id="m3" hidden>
+    <p class="lead">큰 피자의 1/3과 작은 피자의 1/2. 어느 조각이 더 클까요?</p>
+    <div class="pizza"><svg id="pizza" viewBox="0 0 1000 440"></svg></div>
+    <div class="actions">
+      <button class="btn" id="fit">전체 크기 맞추기</button>
+      <button class="btn ghost" id="reset3">처음으로</button>
+    </div>
+    <p class="note" id="note3"></p>
+  </section>
+</div>
+
+<script>
+(() => {
+  const NS = "http://www.w3.org/2000/svg";
+  const $ = id => document.getElementById(id);
+  const el = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; };
+  const fracHTML = (n, d) => `<span class="frac"><span>${n}</span><span class="bar"></span><span>${d}</span></span>`;
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // tabs
+  document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(x => x.setAttribute("aria-selected", x === t));
+    ["m1", "m2", "m3"].forEach(m => $(m).hidden = m !== t.dataset.mode);
+  }));
+
+  // ---------- mode 1: side by side ----------
+  const color = { a: getComputedStyle(document.documentElement).getPropertyValue("--a").trim(), b: getComputedStyle(document.documentElement).getPropertyValue("--b").trim() };
+  function bar(svg, n, d, c) {
+    svg.innerHTML = "";
+    const x0 = 10, w = 980, y = 15, h = 100, cw = w / d;
+    for (let i = 0; i < d; i++) el("rect", { x: x0 + i * cw, y, width: cw, height: h, fill: i < n ? c : "#FFFFFF", stroke: "#16263B", "stroke-width": 4 }, svg);
+  }
+  function update1(changed) {
+    const same = $("same").checked;
+    if (same) {
+      if (changed === "db") $("da").value = $("db").value; else $("db").value = $("da").value;
+    }
+    ["a", "b"].forEach(k => {
+      const d = +$("d" + k).value, n = $("n" + k);
+      n.max = d; if (+n.value > d) n.value = d;
+    });
+    const na = +$("na").value, da = +$("da").value, nb = +$("nb").value, db = +$("db").value;
+    bar($("barA"), na, da, color.a); bar($("barB"), nb, db, color.b);
+    $("fa").innerHTML = fracHTML(na, da); $("fb").innerHTML = fracHTML(nb, db);
+    const L = na * db, R = nb * da;
+    const s = L > R ? ">" : L < R ? "<" : "=";
+    let hint = "";
+    if (da === db) hint = na === nb ? "분모와 분자가 같아요" : "분모가 같으면 분자가 클수록 커요";
+    else if (na === 1 && nb === 1) hint = "분자가 1이면 분모가 작을수록 한 조각이 커요";
+    else hint = "색칠한 길이를 비교해 보세요";
+    $("sign").innerHTML = `<span style="color:${L > R ? color.a : L < R ? color.b : "#16263B"}">${s}</span><small>${hint}</small>`;
+  }
+  ["da", "na", "db", "nb"].forEach(id => $(id).addEventListener("input", () => update1(id)));
+  $("same").addEventListener("change", () => update1("da"));
+  document.querySelectorAll(".step").forEach(b => b.addEventListener("click", () => {
+    const r = $(b.dataset.k); r.value = Math.min(+r.max, Math.max(+r.min, +r.value + +b.dataset.d)); update1(b.dataset.k);
+  }));
+  update1();
+
+  // ---------- mode 2: unit fraction ladder ----------
+  const ladder = $("ladder");
+  let shown = 0, timer = null;
+  const ROW = 60, LX = 130, LW = 850;
+  function ladderRow(d) {
+    const y = 10 + (d - 2) * ROW;
+    const g = el("g", { class: "lrow" }, ladder);
+    // label 1/d drawn as a vertical fraction
+    el("text", { x: 60, y: y + 20, "text-anchor": "middle", "font-size": 24, "font-weight": 800, fill: "#16263B" }, g).textContent = "1";
+    el("line", { x1: 40, x2: 80, y1: y + 27, y2: y + 27, stroke: "#16263B", "stroke-width": 3 }, g);
+    el("text", { x: 60, y: y + 50, "text-anchor": "middle", "font-size": 24, "font-weight": 800, fill: "#16263B" }, g).textContent = d;
+    const cw = LW / d;
+    for (let i = 0; i < d; i++) el("rect", { x: LX + i * cw, y: y + 4, width: cw, height: ROW - 14, fill: i === 0 ? color.a : "#FFFFFF", stroke: "#16263B", "stroke-width": 3 }, g);
+    if (!reduce) { g.style.opacity = 0; g.style.transition = "opacity .4s"; requestAnimationFrame(() => requestAnimationFrame(() => g.style.opacity = 1)); }
+  }
+  function showNext() {
+    if (shown >= 11) return false;
+    shown++; ladderRow(shown + 1);
+    if (shown === 11) {
+      const pts = []; for (let d = 2; d <= 12; d++) { const y = 10 + (d - 2) * ROW; pts.push(`${LX + LW / d},${y + 4}`, `${LX + LW / d},${y + ROW - 10}`); }
+      el("polyline", { points: pts.join(" "), fill: "none", stroke: "#D9483B", "stroke-width": 4, "stroke-dasharray": "10 8" }, ladder);
+      $("note2").textContent = "분모가 커질수록 한 조각(단위분수)은 작아져요.";
+    }
+    return true;
+  }
+  function reset2() { clearInterval(timer); timer = null; ladder.innerHTML = ""; shown = 0; $("note2").textContent = ""; $("play").textContent = "시작"; }
+  $("play").addEventListener("click", () => {
+    if (timer) { clearInterval(timer); timer = null; $("play").textContent = "이어서"; return; }
+    if (shown >= 11) reset2();
+    $("play").textContent = "멈춤";
+    showNext();
+    timer = setInterval(() => { if (!showNext()) { clearInterval(timer); timer = null; $("play").textContent = "다시 보기"; } }, reduce ? 200 : 700);
+  });
+  $("next").addEventListener("click", () => { if (timer) { clearInterval(timer); timer = null; $("play").textContent = "이어서"; } showNext(); });
+  $("reset2").addEventListener("click", reset2);
+
+  // ---------- mode 3: trap pizzas ----------
+  const pz = $("pizza");
+  const BIG = 170;
+  let smallR = 85, fitAnim = null;
+  function sector(cx, cy, r, a1, a2, fill, parent) {
+    const p = a => [cx + r * Math.cos((a - 90) * Math.PI / 180), cy + r * Math.sin((a - 90) * Math.PI / 180)];
+    const [x1, y1] = p(a1), [x2, y2] = p(a2);
+    el("path", { d: `M${cx} ${cy} L${x1} ${y1} A${r} ${r} 0 ${a2 - a1 > 180 ? 1 : 0} 1 ${x2} ${y2} Z`, fill, stroke: "#16263B", "stroke-width": 4, "stroke-linejoin": "round" }, parent);
+  }
+  function drawPizza() {
+    pz.innerHTML = "";
+    const cy = 200;
+    [[0, 120], [120, 240], [240, 360]].forEach(([a, b], i) => sector(260, cy, BIG, a, b, i === 0 ? color.a : "#FFE9C7", pz));
+    [[0, 180], [180, 360]].forEach(([a, b], i) => sector(740, cy, smallR, a, b, i === 0 ? color.b : "#DCEBFB", pz));
+    const label = (x, txt, n, d, c) => {
+      el("text", { x, y: 420, "text-anchor": "middle", "font-size": 30, "font-weight": 800, fill: c }, pz).textContent = txt;
+    };
+    label(260, "큰 피자의 1/3", 1, 3, color.a);
+    label(740, smallR >= BIG - 0.5 ? "같은 크기 피자의 1/2" : "작은 피자의 1/2", 1, 2, color.b);
+  }
+  $("fit").addEventListener("click", () => {
+    cancelAnimationFrame(fitAnim);
+    const from = smallR, start = performance.now(), dur = reduce ? 1 : 1200;
+    const step = now => {
+      const t = Math.min(1, (now - start) / dur), e = 1 - Math.pow(1 - t, 3);
+      smallR = from + (BIG - from) * e; drawPizza();
+      if (t < 1) fitAnim = requestAnimationFrame(step);
+      else $("note3").textContent = "전체 크기가 같아지니 1/2이 1/3보다 커요. 분수를 비교할 때는 전체 크기가 같아야 해요.";
+    };
+    fitAnim = requestAnimationFrame(step);
+  });
+  $("reset3").addEventListener("click", () => { cancelAnimationFrame(fitAnim); smallR = 85; $("note3").textContent = ""; drawPizza(); });
+  drawPizza();
+})();
+</script>
+
+</body>
+</html>
