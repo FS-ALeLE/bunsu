@@ -135,7 +135,7 @@ function settings() {
   }, [6, 8, 10, 12].map((v) => h('option', { value: v, selected: String(v) === (load('fx-maxd') || '12') }, `${v}까지`)));
   const sound = h('input', { type: 'checkbox', checked: soundOn(), onchange: (e) => setSound(e.target.checked) });
 
-  return h('details', { open: !hasBackend() },
+  return h('details', {},
     h('summary', {}, '⚙ 선생님 설정'),
     h('div', { class: 'col' },
       h('b', {}, '구글 시트 웹 앱 주소'),

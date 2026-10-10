@@ -31,7 +31,9 @@ html.battle body { touch-action: none; overflow: hidden; }
 .zone-head { display: flex; align-items: center; gap: 0.5rem; padding: 0.15rem 0.6rem; background: var(--team); color: #fff; font-weight: 900; font-size: 0.9rem; }
 .zone-head .zone-tools { margin-left: auto; display: flex; gap: 0.3rem; }
 .zone-head .btn { min-height: 1.8rem; min-width: 1.8rem; font-size: 0.8rem; padding: 0 0.5rem; border: none; }
-.zone-body { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.4rem; padding: 0.4rem; }
+.zone-body { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; gap: 0.4rem; padding: 0.4rem; }
+/* 누르는 것은 칸 아래쪽에(아이들 키) */
+.z-touch { margin-top: auto; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 0.4rem; min-height: 0; }
 .zone.locked .zone-body { pointer-events: none; }
 .zone-done {
   position: absolute; inset: 0; display: none; align-items: center; justify-content: center; flex-direction: column;
@@ -45,36 +47,38 @@ html.battle body { touch-action: none; overflow: hidden; }
   background: var(--retry); color: #4d3b00; padding: 0.3rem 1rem; border-radius: 1rem; font-weight: 900; font-size: 1.2rem; z-index: 2;
 }
 
-.z-prompt { display: flex; align-items: center; gap: 0.6rem; font-weight: 900; font-size: 1.1rem; }
-.z-prompt .frac { font-size: 1.8rem; }
+.z-prompt { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 0.3rem 0.6rem; font-weight: 900; font-size: 1.1rem; text-align: center; }
+.z-prompt .frac { font-size: 2.6rem; }
 
-/* R1 그림 고르기 / R3 큰 분수 */
-.options { flex: 1; min-height: 0; width: 100%; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: minmax(0, 1fr); gap: 0.4rem; }
-.options.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+/* R1 그림 고르기 / R3 큰 분수: 정사각형 카드. 좁은 칸(3·4칸)은 2열, 넓은 칸(2칸)은 4열 */
+.options { width: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.4rem; }
+.arena[data-split="2"] .options:not(.two) { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .opt {
-  min-width: 0; min-height: 0; display: flex; align-items: center; justify-content: center;
+  min-width: 0; aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
   border: 0.15rem solid var(--line); border-radius: 0.7rem; background: #fff; padding: 0.3rem; cursor: pointer;
 }
 .opt svg.shape { width: 100%; height: 100%; }
-.opt .frac { font-size: 3.2rem; }
 .opt.pressed { background: var(--primary-soft); border-color: var(--primary); }
 
 /* R2 색칠 */
-.paint-wrap { flex: 1; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; }
+.paint-wrap { width: 100%; aspect-ratio: 250 / 170; display: flex; align-items: center; justify-content: center; }
 .paint-wrap svg.shape { width: 100%; height: 100%; }
-.z-actions { display: flex; gap: 0.4rem; }
-.z-actions .btn { min-height: 2.2rem; font-size: 0.9rem; }
+.z-actions { display: flex; gap: 0.4rem; width: 100%; justify-content: center; }
+.z-actions .btn { min-height: 2.2rem; font-size: 0.9rem; flex: 1; max-width: 10rem; }
 
 /* R4 줄 세우기 */
 .lineup-hint { display: flex; justify-content: space-between; width: 100%; color: var(--sub); font-weight: 800; font-size: 0.8rem; padding: 0 0.4rem; }
-.lineup { flex: 1; min-height: 0; width: 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: minmax(0, 1fr); gap: 0.5rem; align-items: center; }
+.lineup { width: 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; }
 .l-card {
-  height: 100%; max-height: 7rem; display: flex; align-items: center; justify-content: center;
+  aspect-ratio: 3 / 4; max-height: 12rem; display: flex; align-items: center; justify-content: center;
   border: 0.15rem solid var(--line); border-radius: 0.8rem; background: #fff; box-shadow: 0 0.1rem 0.3rem rgba(0,0,0,0.08);
   cursor: grab; touch-action: none; position: relative;
 }
-.l-card .frac { font-size: 2.4rem; }
 .l-card.dragging { z-index: 5; box-shadow: 0 0.4rem 1rem rgba(0,0,0,0.2); border-color: var(--primary); cursor: grabbing; }
+
+/* 4칸이면 칸이 좁으므로 글씨를 조금 줄인다 */
+.arena[data-split="4"] .z-prompt { font-size: 0.9rem; }
+.arena[data-split="4"] .zone-head { font-size: 0.85rem; }
 
 /* ---------- 라운드 덮개 ---------- */
 .b-overlay { position: fixed; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center; background: rgba(45, 42, 38, 0.45); touch-action: auto; }
@@ -91,5 +95,12 @@ html.battle body { touch-action: none; overflow: hidden; }
 
 /* 칸이 작아져도 분수가 카드 밖으로 나가지 않게: 카드 크기에 맞춰 글씨를 줄인다(분수는 두 줄 ≈ 글씨의 2.3배 높이) */
 .opt, .l-card { container-type: size; }
-.opt .frac { font-size: min(3.2rem, 40cqh, 45cqw); }
-.l-card .frac { font-size: min(2.4rem, 40cqh, 45cqw); }
+.opt .frac { font-size: min(4rem, 38cqh, 45cqw); }
+.l-card .frac { font-size: min(3rem, 38cqh, 45cqw); }
+
+/* 칸이 넓어도(2·3칸) 누르는 것이 너무 위로 올라가지 않게 높이를 화면 절반 정도로 묶는다 */
+.options { width: min(100%, 48vh); }
+.options.two { width: min(100%, 60vh); }
+.arena[data-split="2"] .options:not(.two) { width: min(100%, 192vh); }
+.paint-wrap { width: min(100%, calc(44vh * 250 / 170)); }
+.lineup { width: min(100%, 80vh); }

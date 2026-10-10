@@ -19,10 +19,24 @@
 .stage { min-height: 0; min-width: 0; height: 100%; display: flex; align-items: center; justify-content: center; }
 .stage svg.shape { width: 100%; height: 100%; }
 .side { display: flex; flex-direction: column; gap: 0.8rem; min-height: 0; overflow: auto; }
-.live { display: flex; align-items: center; gap: 1rem; justify-content: center; padding: 0.6rem; }
-.live .frac { font-size: 4rem; color: var(--shade-deep); }
-.live-read { font-size: 1.6rem; font-weight: 900; margin: 0; }
-.live-sub { margin: 0; color: var(--sub); font-size: 0.9rem; }
+/* 몇 분의 몇일까? — 색칠한 뒤 눌러야 분수가 보인다 */
+.reveal {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.6rem;
+  min-height: 14rem; padding: 1rem; border-radius: 1.2rem; background: var(--panel); border: 3px solid var(--line); text-align: center;
+}
+.reveal.shown { flex-direction: row; border-color: var(--shade); }
+.reveal p { margin: 0; }
+.reveal-hint { font-size: 1.3rem; font-weight: 800; }
+.reveal-sub { color: var(--sub); font-weight: 700; }
+.reveal-q { font-size: 4.4rem; color: #cbbfae; }
+.reveal-frac { font-size: 5.5rem; color: var(--shade-deep); }
+.reveal-read { font-size: 2rem; font-weight: 900; }
+.reveal-text { display: flex; flex-direction: column; gap: 0.4rem; align-items: center; }
+.reveal-btn { width: 100%; }
+.side-tools { display: flex; gap: 0.5rem; }
+.side-tools .btn { flex: 1; }
+.controls { display: flex; flex-direction: column; gap: 0.5rem; padding: 0.6rem; background: var(--panel); border: 2px solid var(--line); border-radius: 1rem; }
+.controls > b { color: var(--sub); font-size: 0.9rem; }
 .shape-btns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem; }
 .shape-btns .btn { flex-direction: column; min-height: 4rem; padding: 0.3rem; font-size: 0.85rem; gap: 0.1rem; }
 .shape-btns .btn svg { width: 2rem; height: 2rem; }
@@ -54,29 +68,32 @@
 .answer-note { text-align: center; font-weight: 800; color: #1d6b40; min-height: 1.4em; margin: 0; }
 
 /* ---------- 칠판 모드 ----------
-   칠판 모드는 rem = 40px 이상이므로 글씨는 1rem 아래로 내리지 않는다. */
-html.board .explore { grid-template-columns: auto minmax(0, 1fr); padding: 0.4rem 0.6rem; gap: 0.6rem; }
-html.board .explore .stage { height: 70vh; width: calc(70vh * 250 / 170); max-width: 58vw; align-self: center; }
-html.board .side { gap: 0.35rem; }
-html.board .live { padding: 0; gap: 0.6rem; }
-html.board .live .frac { font-size: 2.2rem; }
-html.board .live-read { font-size: 1.1rem; }
-html.board .live-sub { display: none; }
-html.board .shape-btns { gap: 0.25rem; }
-html.board .shape-btns .btn { font-size: 1rem; min-height: 2rem; padding: 0 0.2rem; }
-html.board .shape-btns .btn svg { display: none; }
-html.board .d-row .d-val { font-size: 1.2rem; }
-html.board .d-row .btn { min-width: 2rem; }
+   칠판 모드는 rem = 40px 이상이므로 글씨는 1rem 아래로 내리지 않는다.
+   아이들 키를 생각해 누르는 것(도형·버튼)은 아래쪽, 보기만 하는 것(카드·분수)은 위쪽. */
+.board-play { flex: 1; min-height: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.6rem; padding: 0.3rem 0.6rem 0.5rem; }
+.board-stage { display: flex; align-items: flex-end; min-height: 0; }
+.board-stage .stage { height: 70vh; width: calc(70vh * 250 / 170); max-width: 60vw; }
+.board-side { display: flex; flex-direction: column; gap: 0.4rem; min-height: 0; min-width: 0; }
 .card-draw {
-  display: flex; align-items: center; justify-content: center; gap: 1rem;
-  padding: 0.4rem 1rem; border-radius: 1rem; background: var(--primary-soft); min-height: 4rem;
+  display: flex; align-items: center; justify-content: center; gap: 0.8rem;
+  padding: 0.3rem 0.8rem; border-radius: 1rem; background: var(--primary-soft); color: #1d4f99;
 }
-.card-draw .frac { font-size: 2.4rem; color: #1d4f99; }
-.card-draw .card-text { font-size: 1.1rem; min-width: 0; font-weight: 900; color: #1d4f99; }
-.card-draw.empty { color: var(--sub); font-weight: 700; }
-.board-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
-.board-actions .btn { flex: 1; font-size: 1rem; padding: 0 0.4rem; }
-html:not(.board) .card-draw .frac { font-size: 3rem; }
+.card-draw .card-frac { font-size: 2rem; color: #1d4f99; }
+.card-draw .card-text { font-size: 1.1rem; min-width: 0; font-weight: 900; }
+.card-draw.empty { color: var(--sub); }
+.card-draw.empty .card-text { font-size: 1rem; font-weight: 700; }
+html.board .reveal { min-height: 0; padding: 0.3rem 0.8rem; gap: 0.3rem 0.8rem; border-width: 0.1rem; }
+html.board .reveal-q { font-size: 2rem; }
+html.board .reveal-frac { font-size: 2.6rem; }
+html.board .reveal-read { font-size: 1.2rem; }
+html.board .reveal-sub, html.board .reveal-hint { font-size: 1rem; }
+html.board .reveal-text .btn { display: none; }
+.board-actions { margin-top: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 0.35rem; }
+.board-actions .btn { font-size: 1rem; padding: 0 0.4rem; min-height: 2.2rem; }
+html.board .menu-panel { min-width: 26rem; }
+html.board .controls .shape-btns .btn { font-size: 1rem; min-height: 2rem; padding: 0 0.2rem; }
+html.board .controls .shape-btns .btn svg { display: none; }
+html.board .controls .d-row .d-val { font-size: 1rem; }
 
 /* ---------- 출제 모드 ---------- */
 .maker { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 0.6rem; padding: 0.6rem 1rem 1rem; }
@@ -119,7 +136,8 @@ svg.shape .cut-handle { fill: var(--primary); stroke: #fff; stroke-width: 3; cur
   }
   .maker-stage.wide { aspect-ratio: auto; max-height: none; }
   .side, .maker-panel { overflow: visible; }
-  .live .frac { font-size: 3rem; }
+  .reveal { min-height: 9rem; }
+  .reveal-frac { font-size: 4rem; }
   .pg-choice { width: 100%; min-height: 8rem; }
   .pg-home h2 { font-size: 1.5rem; }
   .mission-head .frac.big { font-size: 2.2rem; }

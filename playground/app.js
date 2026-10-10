@@ -10,7 +10,7 @@ import {
 import { speak } from '../common/speak.js';
 import { play } from '../common/sound.js';
 import { record } from '../common/api.js';
-import { h, put, clear, feedback, fracInput, topBar, sparkle, wait } from '../common/ui.js';
+import { h, put, clear, feedback, fracInput, topBar, menuToggle, sparkle, wait } from '../common/ui.js';
 import { applyMode, mode, ensureSession } from '../common/session.js';
 
 applyMode();
@@ -48,7 +48,7 @@ function homeScreen() {
     return s;
   };
   clear(app, 
-    topBar({ title: '분수 놀이터', right: [h('span', { class: 'badge' }, `${session.classCode} · ${session.no}번`)] }),
+    topBar({ title: '분수 놀이터', who: whoText() }),
     h('main', { class: 'pg-home' },
       h('h2', {}, '무엇을 해 볼까요?'),
       h('div', { class: 'pg-choices' },
@@ -63,18 +63,28 @@ function homeScreen() {
 
 // ================= 자유 탐색 =================
 
-// 모양 버튼 + 분모 슬라이더 + 터치 색칠 + 실시간 분수 표시
-function explorer({ onShade } = {}) {
+// '분수 바로 보이기'(색칠하자마자 분수가 보임). 기본은 꺼짐:
+// 색칠한 뒤 [몇 분의 몇일까?]를 눌러야 보인다 — 수업 중 "몇 분의 몇일까?" 물어보는 용도.
+const LIVE_KEY = 'fx-pg-live';
+function liveOn() {
+  try { return localStorage.getItem(LIVE_KEY) === 'on'; } catch (_) { return false; }
+}
+function setLive(on) {
+  try { localStorage.setItem(LIVE_KEY, on ? 'on' : 'off'); } catch (_) { /* 무시 */ }
+}
+
+// 모양 + 터치 색칠 + 분수 확인 칸 + (설정으로 숨겨 둔) 모양·조각 수 바꾸기
+function explorer({ revealButtonInside = true } = {}) {
   let type = 'circle';
   let d = Math.min(4, MAXD);
   let svg = null;
+  let shaded = 0;
+  let revealed = false;
 
   const stage = h('div', { class: 'stage' });
-  const fracSlot = h('div');
-  const readEl = h('p', { class: 'live-read' });
-  const subEl = h('p', { class: 'live-sub' });
-  const live = h('div', { class: 'live', 'aria-live': 'polite' }, fracSlot, h('div', {}, readEl, subEl));
+  const revealBox = h('div', { class: 'reveal', 'aria-live': 'polite' });
 
+  // ---- 모양·조각 수 바꾸기(설정) ----
   const shapeBtns = h('div', { class: 'shape-btns', role: 'group', 'aria-label': '모양' });
   const btnOf = {};
   for (const t of ALL_SHAPES) {
@@ -85,7 +95,6 @@ function explorer({ onShade } = {}) {
     btnOf[t] = b;
     shapeBtns.appendChild(b);
   }
-
   const dVal = h('span', { class: 'd-val' });
   const slider = h('input', { type: 'range', min: F.MIN_D, max: MAXD, step: 1, value: d, 'aria-label': '몇 조각으로 나눌까요' });
   slider.addEventListener('input', () => { d = Number(slider.value); render(); });
@@ -93,7 +102,9 @@ function explorer({ onShade } = {}) {
     type: 'button', class: 'btn btn-icon',
     onclick: () => { d = Math.min(MAXD, Math.max(F.MIN_D, d + k)); render(); },
   }, k > 0 ? '+' : '−');
-  const dRow = h('div', { class: 'd-row' }, step(-1), slider, step(1), dVal);
+  const controls = h('div', { class: 'controls' },
+    h('b', {}, '모양'), shapeBtns,
+    h('b', {}, '몇 조각으로 나눌까요?'), h('div', { class: 'd-row' }, step(-1), slider, step(1), dVal));
 
   function render() {
     // 정육각형은 2·3·6에서만 보인다(나머지는 선택지에서 숨김)
@@ -104,71 +115,113 @@ function explorer({ onShade } = {}) {
     }
     slider.value = d;
     dVal.textContent = `${d}조각`;
-    svg = drawShape(type, d, [], { interactive: true, onChange: update, label: `${shapeName(type)}을 ${d}조각으로 나눈 그림` });
-    clear(stage).appendChild(svg);
-    update([]);
+    svg = drawShape(type, d, [], { interactive: true, onChange: (sh) => update(sh.length), label: `${shapeName(type)}을 ${d}조각으로 나눈 그림` });
+    clear(stage, svg);
+    update(0);
   }
 
-  function update(sh) {
-    const n = sh.length;
-    clear(fracSlot).appendChild(F.fractionEl({ n: n || '', d }));
-    readEl.textContent = n ? F.read({ n, d }) : `${d}조각으로 나눴어요`;
-    subEl.textContent = n === 0 ? '조각을 눌러 색칠해 보세요'
-      : n === d ? '전체를 모두 색칠했어요'
-        : `전체 ${d}조각 중 ${n}조각`;
-    onShade && onShade(n, d);
+  // 색칠이 바뀌면 다시 가린다(바로 보이기를 켰으면 그대로 보임)
+  function update(n) {
+    shaded = n;
+    revealed = liveOn();
+    renderReveal();
+  }
+
+  function renderReveal() {
+    const f = { n: shaded, d };
+    if (!shaded) {
+      clear(revealBox, h('p', { class: 'reveal-hint' }, '조각을 눌러 색칠해 보세요'),
+        h('p', { class: 'reveal-sub' }, `${d}조각으로 똑같이 나누었어요`));
+      revealBox.className = 'reveal empty';
+      return;
+    }
+    if (!revealed) {
+      clear(revealBox,
+        h('div', { class: 'frac reveal-q', 'aria-hidden': 'true' }, h('span', { class: 'frac-n' }, '?'), h('span', { class: 'frac-d' }, '?')),
+        revealButtonInside ? h('button', { type: 'button', class: 'btn btn-primary btn-big reveal-btn', onclick: reveal }, '몇 분의 몇일까?') : null);
+      revealBox.className = 'reveal hidden-answer';
+      return;
+    }
+    clear(revealBox,
+      F.fractionEl(f, 'reveal-frac'),
+      h('div', { class: 'reveal-text' },
+        h('p', { class: 'reveal-read' }, F.read(f)),
+        h('p', { class: 'reveal-sub' }, shaded === d ? '전체를 모두 색칠했어요' : `전체 ${d}조각 중 ${shaded}조각`),
+        h('button', { type: 'button', class: 'btn btn-soft', onclick: readAloud }, '🔈 읽어 주기')));
+    revealBox.className = 'reveal shown';
+  }
+
+  function reveal() {
+    if (!shaded) return feedback('info', '먼저 조각을 색칠해요', 900);
+    revealed = true;
+    renderReveal();
+    play('tap');
+    speak(F.read({ n: shaded, d }));
   }
 
   function readAloud() {
-    const n = svg ? getShaded(svg).length : 0;
-    speak(n ? F.read({ n, d }) : `${d}조각으로 똑같이 나누었어요`);
+    speak(shaded ? F.read({ n: shaded, d }) : `${d}조각으로 똑같이 나누었어요`);
   }
 
   render();
   return {
-    stage, live, shapeBtns, dRow, readAloud,
-    get count() { return svg ? getShaded(svg).length : 0; },
+    stage, revealBox, controls, reveal,
+    get count() { return shaded; },
     get d() { return d; },
     get svg() { return svg; },
     set(t, nd) { type = t; d = nd; render(); },
-    clearShade() { setShaded(svg, []); update([]); },
+    clearShade() { setShaded(svg, []); showNumbers(svg, false); update(0); },
+    refresh() { revealed = revealed || liveOn(); renderReveal(); },
   };
+}
+
+// ⚙ 안에 넣을 '분수 바로 보이기' 줄
+function liveToggle(ex) {
+  return menuToggle('분수 바로 보이기', liveOn, setLive, () => ex.refresh());
+}
+
+function whoText() {
+  return session ? `${session.classCode} · ${session.no}번` : '';
 }
 
 function exploreScreen() {
   const ex = explorer();
-  clear(app, 
-    topBar({ title: '자유 탐색', back: homeScreen }),
+  const changeBtn = h('button', { type: 'button', class: 'btn change-btn', 'aria-expanded': 'false' }, '모양 바꾸기 ▾');
+  ex.controls.hidden = true;
+  changeBtn.addEventListener('click', () => {
+    ex.controls.hidden = !ex.controls.hidden;
+    changeBtn.setAttribute('aria-expanded', String(!ex.controls.hidden));
+    changeBtn.textContent = ex.controls.hidden ? '모양 바꾸기 ▾' : '닫기 ▴';
+  });
+  clear(app,
+    topBar({ title: '자유 탐색', back: homeScreen, who: whoText(), menu: [liveToggle(ex)] }),
     h('main', { class: 'explore' },
       ex.stage,
       h('div', { class: 'side' },
-        ex.live,
-        h('div', { class: 'row' },
-          h('button', { type: 'button', class: 'btn btn-primary', onclick: ex.readAloud }, '🔈 읽어 주기'),
+        ex.revealBox,
+        h('div', { class: 'side-tools' },
           h('button', { type: 'button', class: 'btn', onclick: ex.clearShade }, '모두 지우기'),
-        ),
-        h('div', { class: 'muted' }, '모양'),
-        ex.shapeBtns,
-        h('div', { class: 'muted' }, '몇 조각으로 나눌까요?'),
-        ex.dRow,
+          changeBtn),
+        ex.controls,
       ),
     ),
   );
 }
 
 // ================= 칠판 모드 =================
+// 아이들 키를 생각해 누르는 것(도형·버튼)은 화면 아래쪽에, 보기만 하는 것(카드·분수)은 위쪽에 둔다.
 
 function boardScreen() {
-  const ex = explorer();
+  const ex = explorer({ revealButtonInside: false });
   let card = null;
   const nextCard = F.noRepeat(() => F.randomFraction({ maxD: MAXD }));
-  const cardBox = h('div', { class: 'card-draw empty' }, '카드를 뽑아 보세요');
+  const cardBox = h('div', { class: 'card-draw empty' }, h('span', { class: 'card-text' }, '🃏 카드를 뽑아 보세요'));
 
   function draw() {
     card = nextCard();
     const t = F.pick(ALL_SHAPES.filter((s) => shapeAllows(s, card.d)));
     ex.set(t, card.d);
-    clear(cardBox, F.fractionEl(card), h('span', { class: 'card-text' }, `${F.read(card)}만큼 색칠해요`));
+    clear(cardBox, F.fractionEl(card, 'card-frac'), h('span', { class: 'card-text' }, `${F.read(card)}만큼 색칠해요`));
     cardBox.classList.remove('empty');
     play('tick');
     speak(`${F.read(card)}만큼 색칠하세요`);
@@ -186,23 +239,22 @@ function boardScreen() {
     }
   }
 
-  clear(app, 
-    topBar({ title: '분수 놀이터 · 칠판', home: '../index.html', showStatus: false }),
-    h('main', { class: 'explore' },
-      ex.stage,
-      h('div', { class: 'side' },
+  clear(app,
+    topBar({
+      title: '분수 놀이터 · 칠판', home: '../index.html', showStatus: false,
+      menu: [liveToggle(ex), h('div', { class: 'menu-section' }, ex.controls)],
+    }),
+    h('main', { class: 'board-play' },
+      h('div', { class: 'board-stage' }, ex.stage),
+      h('div', { class: 'board-side' },
         cardBox,
+        ex.revealBox,
         h('div', { class: 'board-actions' },
-          h('button', { type: 'button', class: 'btn btn-primary', onclick: draw }, '🃏 분수 카드 뽑기'),
-          h('button', { type: 'button', class: 'btn btn-soft', onclick: check }, '확인'),
+          h('button', { type: 'button', class: 'btn btn-primary', onclick: draw }, '🃏 카드 뽑기'),
+          h('button', { type: 'button', class: 'btn btn-primary', onclick: ex.reveal }, '몇 분의 몇?'),
+          h('button', { type: 'button', class: 'btn btn-soft', onclick: check }, '✓ 확인'),
+          h('button', { type: 'button', class: 'btn', onclick: ex.clearShade }, '지우기'),
         ),
-        ex.live,
-        h('div', { class: 'board-actions' },
-          h('button', { type: 'button', class: 'btn', onclick: ex.readAloud }, '🔈 읽기'),
-          h('button', { type: 'button', class: 'btn', onclick: () => { ex.clearShade(); showNumbers(ex.svg, false); } }, '지우기'),
-        ),
-        ex.shapeBtns,
-        ex.dRow,
       ),
     ),
   );
@@ -277,7 +329,7 @@ function missionScreen() {
   }
 
   clear(app, 
-    topBar({ title: '미션', back: homeScreen, right: [badge, streakEl, solvedEl] }),
+    topBar({ title: '미션', back: homeScreen, right: [badge, streakEl], who: whoText(), menu: [solvedEl] }),
     body,
   );
 

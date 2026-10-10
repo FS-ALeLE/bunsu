@@ -278,6 +278,30 @@ html.board .app, html.battle .app { height: 100vh; height: 100dvh; overflow: hid
   .feedback { font-size: 1.6rem; padding: 0.6rem 1.2rem; }
 }
 @media (max-width: 480px) {
-  .save-status { display: none; }
+  .topbar-right { flex-wrap: nowrap; }
   .topbar-right .badge { font-size: 0.85rem; padding: 0.15rem 0.5rem; }
 }
+
+/* ---------- ⚙ 설정 메뉴(눌러야 나옴) ---------- */
+.menu-wrap { position: relative; }
+.menu-btn { font-size: 1.3rem; color: var(--sub); background: transparent; border-color: transparent; }
+.menu-btn[aria-expanded="true"] { background: var(--primary-soft); color: #1d4f99; }
+.menu-panel {
+  position: absolute; right: 0; top: calc(100% + 0.4rem); z-index: 40;
+  min-width: 15rem; max-width: 90vw; max-height: 80vh; overflow: auto;
+  display: flex; flex-direction: column; gap: 0.3rem;
+  background: var(--panel); border: 2px solid var(--line); border-radius: 1rem; padding: 0.6rem;
+  box-shadow: 0 0.5rem 1.6rem rgba(0, 0, 0, 0.15);
+}
+.menu-who { font-weight: 800; padding: 0.2rem 0.4rem; color: var(--sub); }
+.menu-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.8rem;
+  min-height: 2.6rem; padding: 0 0.6rem; border: none; border-radius: 0.7rem; background: transparent;
+  font: inherit; font-weight: 700; text-align: left; cursor: pointer;
+}
+.menu-item:hover { background: #f6f1ea; }
+.switch { font-size: 0.8rem; padding: 0.15rem 0.6rem; border-radius: 1rem; background: #ece5da; color: var(--sub); }
+.switch.on { background: var(--ok-soft); color: #1d6b40; }
+.menu-panel .save-status { display: block; text-align: center; margin-top: 0.2rem; }
+.menu-section { display: flex; flex-direction: column; gap: 0.4rem; padding: 0.4rem; border-top: 1px solid var(--line); }
+.menu-section > b { font-size: 0.9rem; color: var(--sub); }

@@ -22,7 +22,7 @@ async function start() {
   const main = h('main', { class: 'bk' });
   const countEl = h('span', { class: 'muted' });
   clear(app, 
-    topBar({ title: '우리 반 문제은행', right: [countEl, h('span', { class: 'badge' }, `${session.classCode} · ${session.no}번`)] }),
+    topBar({ title: '우리 반 문제은행', right: [countEl], who: `${session.classCode} · ${session.no}번` }),
     main,
   );
 

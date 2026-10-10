@@ -44,7 +44,7 @@ export function startMaker(app, session) {
   const nextBtn = h('button', { type: 'button', class: 'btn btn-primary btn-big', onclick: () => go(1) }, '다음 →');
 
   clear(app, 
-    topBar({ title: '문제 만들기', right: [h('span', { class: 'badge' }, `${session.classCode} · ${session.no}번`)] }),
+    topBar({ title: '문제 만들기', who: `${session.classCode} · ${session.no}번` }),
     h('div', { class: 'maker' }, stepBar,
       h('div', { class: 'maker-main' }, stage, h('div', { class: 'maker-side' }, panel, h('div', { class: 'maker-nav' }, prevBtn, nextBtn)))),
   );

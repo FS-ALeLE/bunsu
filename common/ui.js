@@ -108,35 +108,59 @@ export function fracInput() {
   };
 }
 
-// 상단 막대: 홈 링크, 제목, 오른쪽 칸(right), 소리 켜기/끄기, 저장 상태
-//   back: 함수를 주면 ⌂ 대신 ← 버튼(앱 안 처음 화면으로)
-export function topBar({ title, right = [], home = '../index.html', back = null, showStatus = true } = {}) {
-  const sound = h('button', {
-    type: 'button',
-    class: 'btn btn-icon',
-    title: '효과음 켜기/끄기',
-    'aria-label': '효과음 켜기/끄기',
-  });
-  const renderSound = () => { sound.textContent = soundOn() ? '🔊' : '🔈'; sound.setAttribute('aria-pressed', String(soundOn())); };
-  sound.addEventListener('click', () => { setSound(!soundOn()); renderSound(); });
-  renderSound();
-
-  const st = h('span', { class: 'save-status' });
+// 상단 막대: 홈(또는 ←), 제목, 오른쪽에는 배우는 데 필요한 것(right)만.
+// 효과음·저장 상태·학급 번호 같은 설정은 ⚙ 버튼을 눌러야 나온다(화면에서 시선이 흩어지지 않게).
+//   back   : 함수를 주면 ⌂ 대신 ← 버튼(앱 안 처음 화면으로)
+//   menu   : ⚙ 안에 더 넣을 요소들 (menuToggle, 버튼 등)
+//   who    : '3반 · 12번' 같은 글을 ⚙ 안에 보여 줌
+export function topBar({ title, right = [], home = '../index.html', back = null, showStatus = true, menu = [], who = '' } = {}) {
+  const st = h('div', { class: 'save-status' });
   if (showStatus) {
     onStatus(({ state, pending }) => {
       st.dataset.state = state;
-      st.textContent = state === 'local' ? '이 기기에 저장'
-        : state === 'offline' ? `연결 끊김 · 대기 ${pending}`
-          : state === 'pending' ? `보내는 중 ${pending}` : '저장됨';
+      st.textContent = state === 'local' ? '기록: 이 기기에 저장'
+        : state === 'offline' ? `기록: 연결 끊김 · 대기 ${pending}`
+          : state === 'pending' ? `기록: 보내는 중 ${pending}` : '기록: 저장됨';
     });
   }
+
+  const panel = h('div', { class: 'menu-panel', role: 'menu', hidden: true },
+    who ? h('div', { class: 'menu-who' }, who) : null,
+    ...menu,
+    menuToggle('효과음', soundOn, setSound),
+    showStatus ? st : null,
+  );
+  const gear = h('button', {
+    type: 'button', class: 'btn btn-icon menu-btn', 'aria-label': '설정', 'aria-haspopup': 'true', 'aria-expanded': 'false',
+    onclick: () => setOpen(panel.hidden),
+  }, '⚙');
+  const wrap = h('div', { class: 'menu-wrap' }, gear, panel);
+  function setOpen(open) {
+    panel.hidden = !open;
+    gear.setAttribute('aria-expanded', String(open));
+  }
+  // 바깥을 누르면 닫는다
+  document.addEventListener('pointerdown', (e) => { if (!panel.hidden && !wrap.contains(e.target)) setOpen(false); });
 
   return h('header', { class: 'topbar' },
     back ? h('button', { type: 'button', class: 'btn btn-icon home', onclick: back, 'aria-label': '뒤로' }, '←')
       : home ? h('a', { class: 'btn btn-icon home', href: home, 'aria-label': '처음으로' }, '⌂') : null,
     h('h1', { class: 'topbar-title' }, title),
-    h('div', { class: 'topbar-right' }, ...right, showStatus ? st : null, sound),
+    h('div', { class: 'topbar-right' }, ...right, wrap),
   );
+}
+
+// ⚙ 메뉴 안 켜기/끄기 줄.  menuToggle('분수 바로 보이기', () => 값, (v) => 저장)
+export function menuToggle(label, get, set, onChange) {
+  const b = h('button', { type: 'button', class: 'menu-item', role: 'menuitemcheckbox' });
+  const render = () => {
+    const on = !!get();
+    b.setAttribute('aria-checked', String(on));
+    clear(b, h('span', {}, label), h('span', { class: `switch ${on ? 'on' : ''}` }, on ? '켜짐' : '꺼짐'));
+  };
+  b.addEventListener('click', () => { set(!get()); render(); onChange && onChange(!!get()); });
+  render();
+  return b;
 }
 
 // 작은 꽃가루(정답 축하)

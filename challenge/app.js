@@ -95,7 +95,7 @@ function screen() {
   const main = h('main', { class: 'ch' });
 
   clear(app, 
-    topBar({ title: '분수 비교 챌린지', right: [lvBadge, solvedEl, h('span', { class: 'badge' }, `${session.classCode} · ${session.no}번`)] }),
+    topBar({ title: '분수 비교 챌린지', right: [lvBadge, solvedEl], who: `${session.classCode} · ${session.no}번` }),
     main,
   );
 

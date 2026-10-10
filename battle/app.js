@@ -23,7 +23,7 @@ const ROUND_TIME = 90; // 초
 const POINTS = [3, 2]; // 1등 3점, 2등 2점, 나머지 정답 1점
 
 const game = {
-  split: 4, // 교실 전자칠판 동시 터치 4점 이상 확인(2026-10-10) → 기본 4분할
+  split: 4, // 교실 전자칠판 동시 터치 4점 이상 확인(2026-10-10) → 기본 4칸(가로로 나란히)
   names: ['1모둠', '2모둠', '3모둠', '4모둠'],
   scores: [0, 0, 0, 0],
   order: ['R1', 'R2', 'R3', 'R4'],
@@ -133,10 +133,10 @@ function playScreen() {
   const timerEl = h('span', { class: 'timer' });
   const endBtn = h('button', { type: 'button', class: 'btn', onclick: () => endRound() }, '라운드 끝');
   const arena = h('main', { class: 'arena' });
-  const cols = game.split === 4 ? 2 : game.split;
-  const rows = game.split === 4 ? 2 : 1;
-  arena.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
-  arena.style.gridTemplateRows = `repeat(${rows}, minmax(0, 1fr))`;
+  // 칸은 가로로 나란히(1×2, 1×3, 1×4). 전자칠판 앞에 모둠이 옆으로 서서 함께 누른다.
+  arena.style.gridTemplateColumns = `repeat(${game.split}, minmax(0, 1fr))`;
+  arena.style.gridTemplateRows = 'minmax(0, 1fr)';
+  arena.dataset.split = game.split;
 
   clear(app, 
     h('header', { class: 'scoreboard' }, scores,
@@ -223,13 +223,13 @@ function playScreen() {
 
   function buildZone(i, type, problem, rnd) {
     const done = h('div', { class: 'zone-done' });
-    const tools = h('div', { class: 'zone-tools' });
+
     const body = h('div', { class: 'zone-body' });
     const el = h('section', {
       class: 'zone locked', dataset: { zone: i }, style: { '--team': TEAM_COLORS[i] }, 'aria-label': game.names[i],
-    }, h('header', { class: 'zone-head' }, game.names[i], tools), body, done);
+    }, h('header', { class: 'zone-head' }, game.names[i]), body, done);
     const ctx = {
-      i, body, tools,
+      i, body,
       correct: () => zoneCorrect(i),
       wrong: () => zoneWrong(i),
       isDone: () => rnd.finished.includes(i),
@@ -299,7 +299,7 @@ function distractors(f) {
 const ROUND_VIEWS = {
   // R1 듣고 고르기: 음성 → 그림 4개 중 터치. 다시 듣기 버튼은 칸마다.
   R1(ctx, p) {
-    ctx.tools.appendChild(onTap(h('button', { type: 'button', class: 'btn' }, '🔈 다시 듣기'), () => speak(F.read(p.f))));
+    const again = onTap(h('button', { type: 'button', class: 'btn' }, '🔈 다시 듣기'), () => speak(F.read(p.f)));
     const opts = h('div', { class: 'options' });
     for (const f of F.shuffle(p.options)) {
       const o = h('div', { class: 'opt', role: 'button', 'aria-label': '그림' },
@@ -307,7 +307,8 @@ const ROUND_VIEWS = {
       onTap(o, () => (F.same(f, p.f) ? ctx.correct() : ctx.wrong()));
       opts.appendChild(o);
     }
-    put(ctx.body, h('div', { class: 'z-prompt' }, '🔈 잘 듣고 알맞은 그림을 골라요'), opts);
+    put(ctx.body, h('div', { class: 'z-prompt' }, '🔈 잘 듣고 알맞은 그림을 골라요'),
+      h('div', { class: 'z-touch' }, opts, h('div', { class: 'z-actions' }, again)));
   },
 
   // R2 색칠하기: 같은 분수를 칸마다 다른 모양으로
@@ -321,8 +322,9 @@ const ROUND_VIEWS = {
     const reset = onTap(h('button', { type: 'button', class: 'btn' }, '지우기'), () => setShaded(svg, []));
     put(ctx.body, 
       h('div', { class: 'z-prompt' }, F.fractionEl(p.f), '만큼 색칠해요'),
-      h('div', { class: 'paint-wrap' }, svg),
-      h('div', { class: 'z-actions' }, reset, done),
+      h('div', { class: 'z-touch' },
+        h('div', { class: 'paint-wrap' }, svg),
+        h('div', { class: 'z-actions' }, reset, done)),
     );
   },
 
@@ -335,7 +337,7 @@ const ROUND_VIEWS = {
       onTap(o, () => (F.compare(f, other) > 0 ? ctx.correct() : ctx.wrong()));
       opts.appendChild(o);
     }
-    put(ctx.body, h('div', { class: 'z-prompt' }, '더 큰 분수를 눌러요'), opts);
+    put(ctx.body, h('div', { class: 'z-prompt' }, '더 큰 분수를 눌러요'), h('div', { class: 'z-touch' }, opts));
   },
 
   // R4 줄 세우기: 카드 3장을 끌어서 작은 것부터
@@ -393,9 +395,10 @@ const ROUND_VIEWS = {
     render();
     put(ctx.body, 
       h('div', { class: 'z-prompt' }, '작은 분수부터 줄을 세워요'),
-      h('div', { class: 'lineup-hint' }, h('span', {}, '← 작다'), h('span', {}, '크다 →')),
-      line,
-      h('div', { class: 'z-actions' }, done),
+      h('div', { class: 'z-touch' },
+        h('div', { class: 'lineup-hint' }, h('span', {}, '← 작다'), h('span', {}, '크다 →')),
+        line,
+        h('div', { class: 'z-actions' }, done)),
     );
   },
 };
