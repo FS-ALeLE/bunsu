@@ -304,8 +304,10 @@ export function randomPieces(d, n, contiguous = Math.random() < 0.6) {
 
 // 터치로 색칠하기. 처음 누른 조각의 반대 상태로 끌고 지나가는 조각을 같이 칠한다.
 // 손가락마다(pointerId) 따로 기억하므로 여러 명이 동시에 칠해도 섞이지 않는다.
+// 태블릿에서는 두 손가락으로 확대할 수 있다(touch-action: pinch-zoom). 확대가 시작되면
+// 브라우저가 pointercancel을 보내므로, 그 손가락이 바꾼 조각을 원래대로 되돌린다.
 function makePaintable(svg, onChange) {
-  const strokes = new Map(); // pointerId → 칠할지(true)/지울지(false)
+  const strokes = new Map(); // pointerId → { paint: 칠할지/지울지, changed: 바꾼 조각들 }
   const emit = () => onChange && onChange(getShaded(svg));
 
   svg.classList.add('paintable');
@@ -313,24 +315,30 @@ function makePaintable(svg, onChange) {
     if (svg.classList.contains('locked')) return;
     const p = e.target.closest('.piece');
     if (!p) return;
-    e.preventDefault();
+    e.preventDefault(); // 마우스로 끌 때 글자 선택 막기(확대 여부는 touch-action이 정한다)
     const paint = !p.classList.contains('on');
-    strokes.set(e.pointerId, paint);
+    strokes.set(e.pointerId, { paint, changed: [p] });
     p.classList.toggle('on', paint);
     emit();
   });
   svg.addEventListener('pointermove', (e) => {
-    if (!strokes.has(e.pointerId) || svg.classList.contains('locked')) return;
+    const st = strokes.get(e.pointerId);
+    if (!st || svg.classList.contains('locked')) return;
     const el = document.elementFromPoint(e.clientX, e.clientY);
     const p = el && el.closest && el.closest('.piece');
     if (!p || !svg.contains(p)) return;
-    const paint = strokes.get(e.pointerId);
-    if (p.classList.contains('on') !== paint) {
-      p.classList.toggle('on', paint);
+    if (p.classList.contains('on') !== st.paint) {
+      p.classList.toggle('on', st.paint);
+      st.changed.push(p);
       emit();
     }
   });
-  const end = (e) => strokes.delete(e.pointerId);
-  svg.addEventListener('pointerup', end);
-  svg.addEventListener('pointercancel', end);
+  svg.addEventListener('pointerup', (e) => strokes.delete(e.pointerId));
+  svg.addEventListener('pointercancel', (e) => {
+    const st = strokes.get(e.pointerId);
+    strokes.delete(e.pointerId);
+    if (!st) return;
+    st.changed.forEach((p) => p.classList.toggle('on', !st.paint)); // 확대 등으로 취소되면 되돌리기
+    emit();
+  });
 }
