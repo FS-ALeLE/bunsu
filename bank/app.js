@@ -6,7 +6,8 @@
 import * as F from '../common/fraction.js';
 import { call, record, cleanComment } from '../common/api.js';
 import { h, clear, topBar, sparkle } from '../common/ui.js';
-import { applyMode, isBoard, ensureSession, getSession, cleanClass } from '../common/session.js';
+import { applyMode, isBoard, ensureSession, getSession, cleanClass, params } from '../common/session.js';
+import { generateDemoDb, DEMO_CLASS } from '../common/demo.js';
 import { renderProblem, answerText, parseSpec, figSvg, photoEl, TYPES } from '../common/problem.js';
 
 applyMode();
@@ -144,9 +145,12 @@ function saveLiked(set) {
 // ---------- 칠판 모드: 좋아요 TOP3 ----------
 
 function boardView() {
-  let classCode = getSession().classCode;
+  // ?demo=1 : 보고서 캡처용 예시(가상) 자료로 TOP3를 보여 준다(시트에는 쓰지 않음)
+  const demo = params.get('demo') === '1';
+  let classCode = demo ? (cleanClass(params.get('class')) || DEMO_CLASS) : getSession().classCode;
+  const demoDb = demo ? generateDemoDb(classCode) : null;
   const main = h('main', { class: 'top3' });
-  clear(app, topBar({ title: '우리 반 문제은행 · 인기 문제', showStatus: false }), main);
+  clear(app, topBar({ title: '우리 반 문제은행 · 인기 문제', showStatus: false, right: demo ? [h('span', { class: 'badge', style: { background: '#fdf3cf', color: '#7a5c00' } }, '예시 자료(가상)')] : [] }), main);
 
   if (!classCode) {
     const inp = h('input', { class: 'text-input', placeholder: '학급 코드', maxlength: 12 });
@@ -161,7 +165,9 @@ function boardView() {
   async function load() {
     let problems = [];
     try {
-      const r = await call('listProblems', { classCode });
+      const r = demo
+        ? { problems: demoDb.bank.filter((b) => b.approved).map((b) => ({ ...b, comments: demoDb.comments.filter((c) => c.bankId === b.id) })) }
+        : await call('listProblems', { classCode });
       problems = (r && r.problems) || [];
     } catch (_) { /* 다음 새로고침 때 다시 */ }
     const top = problems.slice().sort((a, b) => (b.likes || 0) - (a.likes || 0)).slice(0, 3);

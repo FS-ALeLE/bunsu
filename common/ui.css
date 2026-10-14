@@ -260,7 +260,9 @@ html.board .app, html.battle .app { height: 100vh; height: 100dvh; overflow: hid
 .preview { display: flex; gap: 0.8rem; align-items: center; }
 .preview-visual { width: 9rem; flex: none; display: flex; align-items: center; justify-content: center; }
 .preview-visual svg.shape { width: 9rem; height: 6rem; }
-.preview-visual .row svg.shape { width: 3.5rem; height: 2.5rem; }
+.preview-visual .cmp-prev { display: flex; align-items: center; gap: 0.4rem; }
+.preview-visual .cmp-stack { display: flex; flex-direction: column; align-items: center; gap: 0.2rem; }
+.preview-visual .cmp-stack svg.shape { width: 3.8rem; height: 2.6rem; }
 .preview-visual .frac { font-size: 1.1rem; }
 .preview-visual .problem-photo { max-height: 6rem; }
 .preview-text { font-size: 0.9rem; }

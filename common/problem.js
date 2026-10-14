@@ -149,8 +149,10 @@ export function renderPreview(p) {
   // 사진 문제는 교사가 승인 전에 얼굴·이름이 없는지 볼 수 있게 사진을 그대로 보여 준다
   if (hasPhoto(p) && p.type !== 'compare') visual = photoEl(p);
   else if (p.type === 'compare') {
-    visual = h('div', { class: 'row center' }, F.fractionEl(spec.a), spec.pictures !== false ? figSvg(spec.figA) : null,
-      h('span', {}, '와'), F.fractionEl(spec.b), spec.pictures !== false ? figSvg(spec.figB) : null);
+    // [분수 + 그림] 두 묶음을 나란히(그림이 있어도 줄바꿈되지 않게)
+    const pics = spec.pictures !== false;
+    const stack = (f, fg) => h('div', { class: 'cmp-stack' }, F.fractionEl(f), pics && fg ? figSvg(fg) : null);
+    visual = h('div', { class: 'cmp-prev' }, stack(spec.a, spec.figA), h('span', {}, '와'), stack(spec.b, spec.figB));
   } else if (spec.fig) visual = figSvg(spec.fig);
   return h('div', { class: 'preview' },
     h('div', { class: 'preview-visual' }, visual),

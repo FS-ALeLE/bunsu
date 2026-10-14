@@ -46,3 +46,6 @@ table.hard td.num { text-align: right; font-variant-numeric: tabular-nums; }
   .bank-item { grid-template-columns: minmax(0, 1fr); }
   .preview { flex-direction: column; align-items: flex-start; }
 }
+
+/* 예시(가상) 자료 표시 — 보고서 캡처에 함께 찍히도록 작게 남겨 둔다 */
+.demo-badge { padding: 0.15rem 0.6rem; border-radius: 1rem; background: #fdf3cf; color: #7a5c00; font-size: 0.75rem; font-weight: 800; white-space: nowrap; }
