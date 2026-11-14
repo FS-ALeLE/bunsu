@@ -104,7 +104,9 @@ svg.shape .piece.on { fill: var(--shade); }
 svg.shape.paintable .piece { cursor: pointer; }
 svg.shape .piece.answer { fill: var(--ok); }
 svg.shape .piece-num { font-weight: 800; fill: var(--ink); font-family: inherit; }
-svg.shape.paintable, .touch-area { touch-action: none; }
+/* 태블릿: 한 손가락은 색칠, 두 손가락은 확대. 칠판 모드는 여러 명이 동시에 누르므로 확대를 막는다. */
+svg.shape.paintable, .touch-area { touch-action: pinch-zoom; }
+html.board svg.shape.paintable, html.board .touch-area { touch-action: none; }
 
 /* ---------- 상단 막대 ---------- */
 .topbar {
