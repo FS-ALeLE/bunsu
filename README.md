@@ -43,4 +43,5 @@ follow-along/          ①③⑤ 채팅 제작본
 gas/Code.gs            구글 앱스 스크립트
 tests/                 확인용 페이지
 docs/                  과정 기록과 화면, planning/ 수업 설계·작업 이어 하기
+references/            참고 자료 자리(파일은 저장소에 올리지 않음)
 ```
